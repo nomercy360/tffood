@@ -59,7 +59,7 @@ func (s *S3Client) GetPresignedURL(objectKey string, duration time.Duration) (st
 	return request.URL, err
 }
 
-func (s *S3Client) UploadFile(file []byte, fileName string) (string, error) {
+func (s *S3Client) UploadFile(file []byte, fileName string) error {
 	_, err := s.S3Client.PutObject(context.TODO(), &s3.PutObjectInput{
 		Bucket: aws.String(s.Bucket),
 		Key:    aws.String(fileName),
@@ -67,8 +67,8 @@ func (s *S3Client) UploadFile(file []byte, fileName string) (string, error) {
 	})
 
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	return s.GetPresignedURL(fileName, time.Hour)
+	return nil
 }

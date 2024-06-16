@@ -26,7 +26,7 @@ func (s Storage) Migrate() error {
 		    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		    hidden_at TIMESTAMP,
 		    photo_url TEXT,
-		    FOREIGN KEY (user_id) REFERENCES users (id)
+		    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 		);
 
 		CREATE TABLE IF NOT EXISTS comments (
@@ -35,8 +35,8 @@ func (s Storage) Migrate() error {
 		    post_id INTEGER NOT NULL,
 		    text TEXT NOT NULL,
 		    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		    FOREIGN KEY (user_id) REFERENCES users (id),
-		    FOREIGN KEY (post_id) REFERENCES posts (id)
+		    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+		    FOREIGN KEY (post_id) REFERENCES posts (id) ON DELETE CASCADE
 		);
 		
 		CREATE TABLE IF NOT EXISTS reactions (
@@ -44,8 +44,8 @@ func (s Storage) Migrate() error {
 		    post_id INTEGER NOT NULL,
 		    type TEXT NOT NULL,
 		    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		    FOREIGN KEY (user_id) REFERENCES users (id),
-		    FOREIGN KEY (post_id) REFERENCES posts (id),
+		    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+		    FOREIGN KEY (post_id) REFERENCES posts (id) ON DELETE CASCADE,
 		    PRIMARY KEY (user_id, post_id)
 		);
 
@@ -54,8 +54,8 @@ func (s Storage) Migrate() error {
 		    follower_id INTEGER NOT NULL,
 		    followee_id INTEGER NOT NULL,
 		    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		    FOREIGN KEY (follower_id) REFERENCES users (id),
-		    FOREIGN KEY (followee_id) REFERENCES users (id)
+		    FOREIGN KEY (follower_id) REFERENCES users (id) ON DELETE CASCADE,
+		    FOREIGN KEY (followee_id) REFERENCES users (id) ON DELETE CASCADE
 		);
 
 		CREATE TABLE IF NOT EXISTS locations (
@@ -70,22 +70,28 @@ func (s Storage) Migrate() error {
 		    post_id INTEGER NOT NULL,
 		    location_id INTEGER NOT NULL,
 		    PRIMARY KEY (post_id, location_id),
-		    FOREIGN KEY (post_id) REFERENCES posts (id),
-		    FOREIGN KEY (location_id) REFERENCES locations (id)
+		    FOREIGN KEY (post_id) REFERENCES posts (id) ON DELETE CASCADE,
+		    FOREIGN KEY (location_id) REFERENCES locations (id) ON DELETE CASCADE
 		);
 		
 		CREATE TABLE IF NOT EXISTS tags (
 		    id INTEGER PRIMARY KEY,
-		    name TEXT NOT NULL
+		    name TEXT NOT NULL,
+		    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		    UNIQUE (name)       
 		);
 
 		CREATE TABLE IF NOT EXISTS post_tags (
 		    post_id INTEGER NOT NULL,
 		    tag_id INTEGER NOT NULL,
 		    PRIMARY KEY (post_id, tag_id),
-		    FOREIGN KEY (post_id) REFERENCES posts (id),
-		    FOREIGN KEY (tag_id) REFERENCES tags (id)
+		    FOREIGN KEY (post_id) REFERENCES posts (id) ON DELETE CASCADE,
+		    FOREIGN KEY (tag_id) REFERENCES tags (id) ON DELETE CASCADE
 		);
+
+		INSERT INTO tags (name) VALUES 
+		('Keto'), ('Breakfast'), ('Lunch'), ('Dinner'), ('Snack'), ('Vegetarian'), ('Vegan')
+		ON CONFLICT DO NOTHING;
  	`
 
 	if _, err := s.db.Exec(createTableQuery); err != nil {

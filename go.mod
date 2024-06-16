@@ -9,6 +9,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.55.1
 	github.com/caarlos0/env/v11 v11.0.1
 	github.com/go-playground/validator/v10 v10.20.0
+	github.com/go-telegram/bot v1.4.0
 	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/labstack/echo-jwt/v4 v4.2.0
 	github.com/labstack/echo/v4 v4.12.0

@@ -1,12 +1,14 @@
 package config
 
 type Default struct {
-	JWTSecret string `env:"JWT_SECRET,required"`
-	DBPath    string `env:"DB_PATH" envDefault:"./app.db"`
-	BotToken  string `env:"TELEGRAM_BOT_TOKEN,required"`
-	CdnURL    string `env:"CDN_URL,required"`
-	AWS       AWSConfig
-	Server    ServerConfig
+	JWTSecret   string `env:"JWT_SECRET,required"`
+	DBPath      string `env:"DB_PATH" envDefault:"./app.db"`
+	BotToken    string `env:"TELEGRAM_BOT_TOKEN,required"`
+	CdnURL      string `env:"CDN_URL,required"`
+	ExternalURL string `env:"EXTERNAL_URL,required"`
+	WebAppURL   string `env:"WEB_APP_URL,required"`
+	AWS         AWSConfig
+	Server      ServerConfig
 }
 
 type ServerConfig struct {

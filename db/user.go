@@ -93,3 +93,42 @@ func (s Storage) CreateUser(user User) (*User, error) {
 
 	return s.GetUserByID(UserQuery{ID: id})
 }
+
+func (s Storage) UpdateUserAvatarURL(uid int64, url string) error {
+	q := `
+		UPDATE users
+		SET avatar_url = ?
+		WHERE id = ?
+	`
+
+	res, err := s.db.Exec(q, url, uid)
+
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected, _ := res.RowsAffected(); rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return err
+}
+
+func (s Storage) DeleteUserByID(uid int64) error {
+	q := `
+		DELETE FROM users
+		WHERE id = ?
+	`
+
+	res, err := s.db.Exec(q, uid)
+
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected, _ := res.RowsAffected(); rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return err
+}

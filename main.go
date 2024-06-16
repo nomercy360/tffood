@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/caarlos0/env/v11"
 	"github.com/go-playground/validator/v10"
+	telegram "github.com/go-telegram/bot"
 	"github.com/golang-jwt/jwt/v5"
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
@@ -150,7 +151,18 @@ func main() {
 		log.Fatalf("Failed to initialize AWS S3 client: %v\n", err)
 	}
 
-	h := handler.New(sql, cfg, s3Client)
+	tg, err := telegram.New(cfg.BotToken)
+	if err != nil {
+		log.Fatalf("Failed to create telegram bot: %v", err)
+	}
+
+	webhook := &telegram.SetWebhookParams{URL: cfg.ExternalURL + "/wh/telegram", MaxConnections: 10}
+
+	if _, err := tg.SetWebhook(context.Background(), webhook); err != nil {
+		log.Fatalf("Failed to set webhook: %v", err)
+	}
+
+	h := handler.New(sql, cfg, s3Client, tg)
 
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
@@ -166,6 +178,7 @@ func main() {
 	e.Validator = &customValidator{validator: validator.New()}
 
 	e.POST("/auth/telegram", h.TelegramAuth)
+	e.POST("/wh/telegram", h.HandleWebhook)
 
 	// Routes
 	g := e.Group("/api")

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	telegram "github.com/go-telegram/bot"
 	"rednit/config"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 
 type s3Client interface {
 	GetPresignedURL(fileName string, exp time.Duration) (string, error)
+	UploadFile(file []byte, fileName string) error
 }
 
 type storage interface {
@@ -21,16 +23,19 @@ type storage interface {
 	DeletePostReaction(uid, postID int64) error
 	UpdatePostReaction(uid, postID int64, reaction db.ReactionType) error
 	ListTags() ([]db.Tag, error)
+	UpdateUserAvatarURL(uid int64, url string) error
+	DeleteUserByID(uid int64) error
 }
 
 type Handler struct {
 	st       storage
 	config   config.Default
 	s3Client s3Client
+	tg       *telegram.Bot
 }
 
-func New(st storage, config config.Default, s3Client s3Client) Handler {
-	return Handler{st: st, config: config, s3Client: s3Client}
+func New(st storage, config config.Default, s3Client s3Client, tg *telegram.Bot) Handler {
+	return Handler{st: st, config: config, s3Client: s3Client, tg: tg}
 }
 
 type JWTClaims struct {
