@@ -22,7 +22,8 @@ WORKDIR /app
 RUN apk add --no-cache \
     ca-certificates \
     curl \
-    bash
+    bash \
+    sqlite
 
 COPY --from=build /go/bin/main /app/main
 
