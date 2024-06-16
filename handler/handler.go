@@ -1,0 +1,59 @@
+package handler
+
+import (
+	"rednit/config"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"rednit/db"
+)
+
+type s3Client interface {
+	GetPresignedURL(fileName string, exp time.Duration) (string, error)
+}
+
+type storage interface {
+	GetUserByID(params db.UserQuery) (*db.User, error)
+	CreateUser(user db.User) (*db.User, error)
+	CreatePost(uid int64, post db.Post, tags []int) (*db.Post, error)
+	ListPosts(uid int64) ([]db.Post, error)
+	GetPostByID(uid, id int64) (*db.Post, error)
+	DeletePostReaction(uid, postID int64) error
+	UpdatePostReaction(uid, postID int64, reaction db.ReactionType) error
+	ListTags() ([]db.Tag, error)
+}
+
+type Handler struct {
+	st       storage
+	config   config.Default
+	s3Client s3Client
+}
+
+func New(st storage, config config.Default, s3Client s3Client) Handler {
+	return Handler{st: st, config: config, s3Client: s3Client}
+}
+
+type JWTClaims struct {
+	jwt.RegisteredClaims
+	UID    int64 `json:"uid"`
+	ChatID int64 `json:"chat_id"`
+}
+
+func generateJWT(secret string, uid, chatID int64) (string, error) {
+	claims := &JWTClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+		},
+		UID:    uid,
+		ChatID: chatID,
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	t, err := token.SignedString([]byte(secret))
+	if err != nil {
+		return "", err
+	}
+
+	return t, nil
+}
