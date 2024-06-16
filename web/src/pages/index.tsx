@@ -115,7 +115,7 @@ export default function HomePage() {
 	return (
 		<section class="p-4">
 			<div class="grid gap-2">
-				<Show when={query.isSuccess} fallback={<div>Loading...</div>}>
+				<Show when={query.isSuccess} fallback={<Loader />}>
 					<For each={query.data as Post[]}>
 						{(item) => (
 							<div class="rounded-lg border bg-section">
@@ -196,5 +196,16 @@ export default function HomePage() {
 				</Show>
 			</div>
 		</section>
+	)
+}
+
+function Loader() {
+	return (
+		<div class="grid gap-2">
+			<div class="h-80 animate-pulse rounded-lg border bg-section" />
+			<div class="h-80 animate-pulse rounded-lg border bg-section" />
+			<div class="h-80 animate-pulse rounded-lg border bg-section" />
+			<div class="h-80 animate-pulse rounded-lg border bg-section" />
+		</div>
 	)
 }

@@ -203,7 +203,9 @@ func (h Handler) handleUserAvatar(userID, tgUserID, chatID int64) {
 
 		log.Printf("Avatar uploaded successfully: %s", fileName)
 
-		if err := h.st.UpdateUserAvatarURL(userID, fileName); err != nil {
+		url := fmt.Sprintf("%s/%s", h.config.CdnURL, fileName)
+
+		if err := h.st.UpdateUserAvatarURL(userID, url); err != nil {
 			log.Printf("Failed to update user avatar URL: %v", err)
 		}
 

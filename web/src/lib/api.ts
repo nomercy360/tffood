@@ -35,28 +35,22 @@ export const apiFetch = async ({
 		bodyToSend = undefined
 	}
 
-	try {
-		showProgress && window.Telegram.WebApp.MainButton.showProgress(false)
+	const response = await fetch(`${API_BASE_URL}/api${endpoint}`, {
+		method,
+		headers,
+		body: bodyToSend as BodyInit,
+	})
 
-		const response = await fetch(`${API_BASE_URL}/api${endpoint}`, {
-			method,
-			headers,
-			body: bodyToSend as BodyInit,
-		})
+	if (!response.ok) {
+		const errorResponse = await response.json()
+		throw { code: response.status, message: errorResponse.message }
+	}
 
-		if (!response.ok) {
-			const errorResponse = await response.json()
-			throw { code: response.status, message: errorResponse.message }
-		}
-
-		switch (response.status) {
-			case 204:
-				return true
-			default:
-				return response[responseContentType as 'json' | 'blob']()
-		}
-	} finally {
-		showProgress && window.Telegram.WebApp.MainButton.hideProgress()
+	switch (response.status) {
+		case 204:
+			return true
+		default:
+			return response[responseContentType as 'json' | 'blob']()
 	}
 }
 

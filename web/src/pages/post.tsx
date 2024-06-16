@@ -151,7 +151,7 @@ export default function PostPage() {
 	}
 
 	return (
-		<section class="px-4 pb-14 pt-5">
+		<section class="min-h-screen bg-secondary px-4 pb-14 pt-5">
 			<p class="text-2xl font-bold text-foreground">
 				What are you cooking today?
 			</p>
@@ -160,7 +160,7 @@ export default function PostPage() {
 				Description
 				<textarea
 					class="mt-2 h-32 w-full resize-none rounded-lg border bg-transparent p-2 text-foreground"
-					placeholder="Enter description"
+					placeholder="Describe what do you feel like sharing today"
 					value={editPost.text}
 					onInput={(e) => setEditPost('text', e.currentTarget.value)}
 				/>
@@ -214,13 +214,13 @@ export default function PostPage() {
 			</div>
 			<div class="mt-4 flex flex-col items-start justify-between">
 				<label class="text-sm">Optional tags</label>
-				<div class="mt-2 flex flex-row items-center justify-end gap-2">
+				<div class="mt-2 flex flex-row flex-wrap items-center justify-start gap-2">
 					<For each={tagsQuery.data}>
 						{(tag) => (
 							<button
 								class={cn(
 									'flex h-8 items-center justify-center rounded-lg px-4 text-sm font-medium text-foreground',
-									editPost.tags.includes(tag.id) && 'bg-secondary',
+									editPost.tags.includes(tag.id) && 'bg-background',
 								)}
 								onClick={() =>
 									setEditPost(
