@@ -45,10 +45,7 @@ func (s Storage) Migrate() error {
 		    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
 		    FOREIGN KEY (location_id) REFERENCES locations (id) ON DELETE SET NULL
 		);
-		
-		ALTER TABLE posts ADD COLUMN location_id INTEGER;
-		ALTER TABLE posts ADD FOREIGN KEY (location_id) REFERENCES locations (id) ON DELETE SET NULL;
-		
+
 		CREATE TABLE IF NOT EXISTS comments (
 		    id INTEGER PRIMARY KEY,
 		    user_id INTEGER NOT NULL,
