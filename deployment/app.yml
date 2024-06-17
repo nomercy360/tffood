@@ -23,7 +23,7 @@ spec:
       containers:
         - image: maksim1111/tffood-api:latest
           name: tffood-api
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           command: [ "/app/main" ]
           ports:
             - containerPort: 8080
@@ -47,7 +47,7 @@ spec:
                 name: tffood-api-secrets
           readinessProbe:
             exec:
-              command: ["sqlite3", "/app/storage/db.sqlite", "SELECT 1"]
+              command: ["sqlite3", "/app/storage/db.sqlite", ".tables"]
             initialDelaySeconds: 10
             periodSeconds: 5
             timeoutSeconds: 2
