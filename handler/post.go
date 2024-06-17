@@ -36,9 +36,14 @@ func (h Handler) GetPosts(c echo.Context) error {
 }
 
 type CreatePostRequest struct {
-	Text  string `json:"text"`
-	Photo string `json:"photo" validate:"required"`
-	Tags  []int  `json:"tags"`
+	Text     string `json:"text"`
+	Photo    string `json:"photo" validate:"required"`
+	Tags     []int  `json:"tags"`
+	Location struct {
+		Latitude  *float64 `json:"latitude"`
+		Longitude *float64 `json:"longitude"`
+		Address   *string  `json:"address"`
+	} `json:"location"`
 }
 
 func (h Handler) CreatePost(c echo.Context) error {
@@ -56,6 +61,17 @@ func (h Handler) CreatePost(c echo.Context) error {
 	post := db.Post{
 		Text:     req.Text,
 		PhotoURL: fmt.Sprintf("%s/%s", h.config.CdnURL, req.Photo),
+	}
+
+	if req.Location.Latitude != nil && req.Location.Longitude != nil {
+		post.Location = &db.Location{
+			Latitude:  *req.Location.Latitude,
+			Longitude: *req.Location.Longitude,
+		}
+
+		if req.Location.Address != nil {
+			post.Location.Address = *req.Location.Address
+		}
 	}
 
 	info, err := GetFoodPictureInfo(post.PhotoURL, h.config.OpenAIKey)

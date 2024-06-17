@@ -9,18 +9,21 @@ import {
 	Switch,
 } from 'solid-js'
 import { useMainButton } from '~/lib/useMainButton'
-import { IconClose, IconMap } from '~/components/icons'
+import { IconClose, IconMap, IconSparkles } from '~/components/icons'
 import { fetchCreatePost, fetchPresignedUrl, fetchTags } from '~/lib/api'
 import { useNavigate } from '@solidjs/router'
-import { createQuery } from '@tanstack/solid-query'
-import { cn } from '~/lib/utils'
 import { queryClient } from '~/App'
+import { cn } from '~/lib/utils'
 
 type CreatePost = {
 	text: string
 	photo: string
-	location: string
-	tags: number[]
+	location: {
+		latitude: number | null
+		longitude: number | null
+		address: string | null
+	}
+	tags: string[]
 }
 
 async function uploadToS3(url: string, file: File) {
@@ -39,40 +42,47 @@ async function uploadToS3(url: string, file: File) {
 export default function PostPage() {
 	const [editPost, setEditPost] = createStore({
 		text: '',
-		location: '',
 		photo: '',
 		tags: [],
+		location: {
+			latitude: null,
+			longitude: null,
+			address: null,
+		},
 	} as CreatePost)
 
 	const [loading, setLoading] = createSignal(false)
+	const [postLoading, setPostLoading] = createSignal(false)
+
 	const mainButton = useMainButton()
 
 	const [imgFile, setImgFile] = createSignal<File | null>(null)
 	const [previewUrl, setPreviewUrl] = createSignal('')
 
-	const tagsQuery = createQuery(() => ({
-		queryKey: ['tags'],
-		queryFn: () => fetchTags(),
-	}))
+	const [tags, setTags] = createSignal<string[]>([])
 
 	const navigate = useNavigate()
 
 	const savePost = async () => {
 		if (imgFile() && imgFile() !== null) {
-			mainButton.disable('Save').showProgress(true)
+			mainButton.disable('Save')
+			setPostLoading(true)
 			try {
 				const { file_name, url } = await fetchPresignedUrl(imgFile()!.name)
 				await uploadToS3(url, imgFile()!)
 				setEditPost('photo', file_name)
-				await fetchCreatePost(editPost)
+				const resp = await fetchCreatePost(editPost)
+				setEditPost('text', resp.suggested_dish_name)
+				setTags(resp.suggested_ingredients)
 				await queryClient.invalidateQueries({ queryKey: ['posts'] })
-				navigate('/')
+				// navigate('/')
 			} catch (e) {
 				console.error(e)
 			} finally {
-				mainButton.enable('Save').hideProgress()
-				setImgFile(null)
-				setPreviewUrl('')
+				mainButton.enable('Save')
+				// setImgFile(null)
+				// setPreviewUrl('')
+				setPostLoading(false)
 			}
 		}
 	}
@@ -114,7 +124,11 @@ export default function PostPage() {
 					const { latitude, longitude } = position.coords
 					const locationName = await getLocationName(latitude, longitude)
 					setCurrentLocation(locationName)
-					setEditPost('location', locationName)
+					setEditPost('location', {
+						latitude,
+						longitude,
+						address: locationName,
+					})
 				},
 				(error) => {
 					console.error('Error getting geolocation:', error)
@@ -156,15 +170,6 @@ export default function PostPage() {
 				What are you cooking today?
 			</p>
 			<p class="text-hint">Share your delicious meal with the world</p>
-			<label class="mt-8 block text-sm font-medium text-foreground">
-				Description
-				<textarea
-					class="mt-2 h-32 w-full resize-none rounded-lg border bg-transparent p-2 text-foreground"
-					placeholder="Describe what do you feel like sharing today"
-					value={editPost.text}
-					onInput={(e) => setEditPost('text', e.currentTarget.value)}
-				/>
-			</label>
 			<Show
 				when={!previewUrl()}
 				fallback={
@@ -182,8 +187,34 @@ export default function PostPage() {
 					/>
 				</label>
 			</Show>
+			<Show when={previewUrl()}>
+				<label class="mt-6 block text-sm font-medium text-foreground">
+					Description
+					<div class="mt-2 flex flex-row items-center justify-between space-x-2">
+						<input
+							class="h-10 w-full resize-none rounded-lg border bg-transparent px-2 text-foreground"
+							placeholder="Describe what do you feel like sharing today"
+							value={editPost.text}
+							onInput={(e) => setEditPost('text', e.currentTarget.value)}
+						/>
+						<button
+							class="flex h-full w-8 items-center justify-center rounded-r-lg bg-transparent"
+							onClick={() => savePost()}
+						>
+							<Switch>
+								<Match when={!postLoading()}>
+									<IconSparkles class="size-5 text-foreground" />
+								</Match>
+								<Match when={postLoading()}>
+									<Spinner />
+								</Match>
+							</Switch>
+						</button>
+					</div>
+				</label>
+			</Show>
 			<label
-				class="mt-4 block w-full text-sm font-medium text-foreground"
+				class="mt-6 block w-full text-sm font-medium text-foreground"
 				for="location"
 			>
 				Location
@@ -192,10 +223,9 @@ export default function PostPage() {
 				<input
 					type="text"
 					id="location"
-					class="w-full rounded-lg border bg-transparent p-2 text-foreground"
+					class="h-10 w-full rounded-lg border bg-transparent px-2 text-foreground"
 					placeholder="Enter location"
-					value={editPost.location}
-					onInput={(e) => setEditPost('location', e.currentTarget.value)}
+					value={editPost.location.address || ''}
 				/>
 				<button
 					class="flex h-full w-8 items-center justify-center rounded-full bg-transparent"
@@ -212,32 +242,34 @@ export default function PostPage() {
 					</Switch>
 				</button>
 			</div>
-			<div class="mt-4 flex flex-col items-start justify-between">
-				<label class="text-sm">Optional tags</label>
-				<div class="mt-2 flex flex-row flex-wrap items-center justify-start gap-2">
-					<For each={tagsQuery.data}>
-						{(tag) => (
-							<button
-								class={cn(
-									'flex h-8 items-center justify-center rounded-lg bg-background px-4 text-sm font-medium text-foreground',
-									editPost.tags.includes(tag.id) &&
-										'bg-primary text-primary-foreground',
-								)}
-								onClick={() =>
-									setEditPost(
-										'tags',
-										editPost.tags.includes(tag.id)
-											? editPost.tags.filter((t) => t !== tag.id)
-											: [...editPost.tags, tag.id],
-									)
-								}
-							>
-								{tag.name}
-							</button>
-						)}
-					</For>
+			<Show when={tags().length > 0}>
+				<div class="mt-4 flex flex-col items-start justify-between">
+					<label class="text-sm">Suggested tags</label>
+					<div class="mt-2 flex flex-row flex-wrap items-center justify-start gap-2">
+						<For each={tags()}>
+							{(tag) => (
+								<button
+									class={cn(
+										'flex h-8 items-center justify-center rounded-lg bg-background px-4 text-sm font-medium text-foreground',
+										editPost.tags.includes(tag) &&
+											'bg-primary text-primary-foreground',
+									)}
+									onClick={() =>
+										setEditPost(
+											'tags',
+											editPost.tags.includes(tag)
+												? editPost.tags.filter((t) => t !== tag)
+												: [...editPost.tags, tag],
+										)
+									}
+								>
+									{tag}
+								</button>
+							)}
+						</For>
+					</div>
 				</div>
-			</div>
+			</Show>
 		</section>
 	)
 }
@@ -247,7 +279,7 @@ function Spinner() {
 		<div role="status">
 			<svg
 				aria-hidden="true"
-				class="size-5 animate-spin fill-accent-foreground text-hint"
+				class="size-5 animate-spin fill-foreground text-hint"
 				viewBox="0 0 100 101"
 				fill="none"
 				xmlns="http://www.w3.org/2000/svg"

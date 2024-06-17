@@ -18,6 +18,16 @@ func (s Storage) Migrate() error {
 		    title TEXT
 		);
 
+		CREATE TABLE IF NOT EXISTS locations (
+		    id INTEGER PRIMARY KEY,
+		    latitude REAL NOT NULL,
+		    longitude REAL NOT NULL,
+		    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		    address TEXT,
+		    user_id INTEGER NOT NULL,
+		    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+		);
+
 		CREATE TABLE IF NOT EXISTS posts (
 		    id INTEGER PRIMARY KEY,
 		    user_id INTEGER NOT NULL,
@@ -31,8 +41,13 @@ func (s Storage) Migrate() error {
 		    is_spam BOOLEAN NOT NULL DEFAULT FALSE,
 		    suggested_dish_name TEXT,
 		    suggested_ingredients TEXT,
-		    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+		    location_id INTEGER,
+		    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+		    FOREIGN KEY (location_id) REFERENCES locations (id) ON DELETE SET NULL
 		);
+		
+		ALTER TABLE posts ADD COLUMN location_id INTEGER;
+		ALTER TABLE posts ADD FOREIGN KEY (location_id) REFERENCES locations (id) ON DELETE SET NULL;
 		
 		CREATE TABLE IF NOT EXISTS comments (
 		    id INTEGER PRIMARY KEY,
@@ -63,22 +78,6 @@ func (s Storage) Migrate() error {
 		    FOREIGN KEY (followee_id) REFERENCES users (id) ON DELETE CASCADE
 		);
 
-		CREATE TABLE IF NOT EXISTS locations (
-		    id INTEGER PRIMARY KEY,
-		    latitude REAL NOT NULL,
-		    longitude REAL NOT NULL,
-		    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		    name TEXT
-		);
-
-		CREATE TABLE IF NOT EXISTS posts_locations (
-		    post_id INTEGER NOT NULL,
-		    location_id INTEGER NOT NULL,
-		    PRIMARY KEY (post_id, location_id),
-		    FOREIGN KEY (post_id) REFERENCES posts (id) ON DELETE CASCADE,
-		    FOREIGN KEY (location_id) REFERENCES locations (id) ON DELETE CASCADE
-		);
-		
 		CREATE TABLE IF NOT EXISTS tags (
 		    id INTEGER PRIMARY KEY,
 		    name TEXT NOT NULL,

@@ -52,24 +52,34 @@ func (up *UserProfile) Scan(src interface{}) error {
 	return nil
 }
 
-type Post struct {
-	ID                   int64       `db:"id" json:"id"`
-	UserID               int64       `db:"user_id" json:"user_id"`
-	Text                 string      `db:"text" json:"text"`
-	CreatedAt            time.Time   `db:"created_at" json:"created_at"`
-	UpdatedAt            time.Time   `db:"updated_at" json:"updated_at"`
-	HiddenAt             *time.Time  `db:"hidden_at" json:"hidden_at"`
-	PhotoURL             string      `db:"photo_url" json:"photo_url"`
-	User                 UserProfile `json:"user" db:"user"`
-	DishName             *string     `json:"dish_name" db:"dish_name"`
-	Ingredients          ArrayString `json:"ingredients" db:"ingredients"`
-	SuggestedDishName    *string     `json:"suggested_dish_name" db:"suggested_dish_name"`
-	SuggestedIngredients ArrayString `json:"suggested_ingredients" db:"suggested_ingredients"`
-	IsSpam               bool        `json:"is_spam" db:"is_spam"`
+type Location struct {
+	Latitude  float64   `json:"latitude" db:"latitude"`
+	Longitude float64   `json:"longitude" db:"longitude"`
+	Address   string    `json:"address" db:"address"`
+	ID        int64     `json:"id" db:"id"`
+	UserID    int64     `json:"user_id" db:"user_id"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+}
 
-	Reactions    PostReactions `json:"reactions" db:"-"`
-	UserReaction UserReaction  `json:"user_reaction" db:"-"`
-	Tags         TagSlice      `json:"tags" db:"-"`
+type Post struct {
+	ID                   int64         `db:"id" json:"id"`
+	UserID               int64         `db:"user_id" json:"user_id"`
+	Text                 string        `db:"text" json:"text"`
+	LocationID           *int64        `db:"location_id" json:"location_id"`
+	CreatedAt            time.Time     `db:"created_at" json:"created_at"`
+	UpdatedAt            time.Time     `db:"updated_at" json:"updated_at"`
+	HiddenAt             *time.Time    `db:"hidden_at" json:"hidden_at"`
+	PhotoURL             string        `db:"photo_url" json:"photo_url"`
+	User                 UserProfile   `json:"user" db:"user"`
+	DishName             *string       `json:"dish_name" db:"dish_name"`
+	Ingredients          ArrayString   `json:"ingredients" db:"ingredients"`
+	SuggestedDishName    *string       `json:"suggested_dish_name" db:"suggested_dish_name"`
+	SuggestedIngredients ArrayString   `json:"suggested_ingredients" db:"suggested_ingredients"`
+	IsSpam               bool          `json:"is_spam" db:"is_spam"`
+	Location             *Location     `json:"location" db:"location"`
+	Reactions            PostReactions `json:"reactions" db:"-"`
+	UserReaction         UserReaction  `json:"user_reaction" db:"-"`
+	Tags                 TagSlice      `json:"tags" db:"tags"`
 }
 
 type ArrayString []string
@@ -134,18 +144,23 @@ func (s Storage) GetPostByID(uid, id int64) (*Post, error) {
 			   p.suggested_dish_name,
 			   p.suggested_ingredients,
 			   p.is_spam,
+			   p.location_id,
 			   json_object('id', u.id, 'last_name', u.last_name, 'first_name', u.first_name, 'avatar_url', u.avatar_url, 'title',
-												   u.title, 'username', u.username) AS user,
+											   u.title, 'username', u.username) AS user,
 			   COALESCE(SUM(CASE WHEN r.type = 'smile' THEN 1 ELSE 0 END), 0) AS smile,
 			   COALESCE(SUM(CASE WHEN r.type = 'frown' THEN 1 ELSE 0 END), 0) AS frown,
 			   COALESCE(SUM(CASE WHEN r.type = 'meh' THEN 1 ELSE 0 END), 0) AS meh,
-			   COALESCE(r2.type, '') AS type
+			   COALESCE(r2.type, '') AS type,
+			   json_object('id', l.id, 'latitude', l.latitude, 'longitude', l.longitude, 'address', l.address, 'user_id', l.user_id) AS location
 		FROM posts p
 				 JOIN users u ON p.user_id = u.id
 				 LEFT JOIN reactions r ON p.id = r.post_id
 				 LEFT JOIN reactions r2 ON p.id = r2.post_id AND r2.user_id = ?
+				 LEFT JOIN locations l ON p.location_id = l.id
 		WHERE p.id = ?
 	`
+
+	var locationJSON []byte
 
 	err := s.db.QueryRow(query, uid, id).Scan(
 		&post.ID,
@@ -160,11 +175,13 @@ func (s Storage) GetPostByID(uid, id int64) (*Post, error) {
 		&post.SuggestedDishName,
 		&post.SuggestedIngredients,
 		&post.IsSpam,
+		&post.LocationID,
 		&post.User,
 		&post.Reactions.Smile,
 		&post.Reactions.Frown,
 		&post.Reactions.Meh,
 		&post.UserReaction.Type,
+		&locationJSON,
 	)
 
 	if IsNoRowsError(err) {
@@ -173,16 +190,46 @@ func (s Storage) GetPostByID(uid, id int64) (*Post, error) {
 		return nil, err
 	}
 
+	if post.LocationID != nil {
+		var location Location
+		if err := json.Unmarshal(locationJSON, &location); err != nil {
+			return nil, err
+		}
+		post.Location = &location
+	}
+
 	return &post, nil
 }
 
 func (s Storage) CreatePost(uid int64, post Post, tags []int) (*Post, error) {
+	var locationID *int64
+
+	if post.Location != nil {
+		locationQuery := `
+			INSERT INTO locations (latitude, longitude, address, user_id)
+			VALUES (?, ?, ?, ?)
+		`
+
+		res, err := s.db.Exec(locationQuery, post.Location.Latitude, post.Location.Longitude, post.Location.Address, uid)
+		if err != nil {
+			return nil, err
+		}
+
+		id, err := res.LastInsertId()
+
+		if err != nil {
+			return nil, err
+		}
+
+		locationID = &id
+	}
+
 	query := `
-		INSERT INTO posts (user_id, text, photo_url, suggested_dish_name, suggested_ingredients, is_spam)
-		VALUES (?, ?, ?, ?, ?, ?)
+		INSERT INTO posts (user_id, text, photo_url, suggested_dish_name, suggested_ingredients, is_spam, location_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
 	`
 
-	res, err := s.db.Exec(query, uid, post.Text, post.PhotoURL, post.SuggestedDishName, post.SuggestedIngredients, post.IsSpam)
+	res, err := s.db.Exec(query, uid, post.Text, post.PhotoURL, post.SuggestedDishName, post.SuggestedIngredients, post.IsSpam, locationID)
 
 	if err != nil {
 		return nil, err
@@ -227,14 +274,17 @@ func (s Storage) ListPosts(uid int64) ([]Post, error) {
 			   p.suggested_dish_name,
 			   p.suggested_ingredients,
 			   p.is_spam,
+			   p.location_id,
 			   json_object('id', u.id, 'last_name', u.last_name, 'first_name', u.first_name, 'avatar_url', u.avatar_url,
 						   'title',
 						   u.title, 'username', u.username)                                                        AS user,
-			   json_group_array(distinct json_object('id', t.id, 'name', t.name)) filter ( where t.id is not null) AS tags
+			   json_group_array(distinct json_object('id', t.id, 'name', t.name)) filter ( where t.id is not null) AS tags,
+			   json_object('id', l.id, 'latitude', l.latitude, 'longitude', l.longitude, 'address', l.address, 'user_id', l.user_id) AS location
 		FROM posts p
 				 JOIN users u ON p.user_id = u.id
 				 LEFT JOIN post_tags pt ON p.id = pt.post_id
 				 LEFT JOIN tags t ON pt.tag_id = t.id
+				 LEFT JOIN locations l ON p.location_id = l.id
 		GROUP BY p.id
 		ORDER BY p.created_at DESC
 		LIMIT 100
@@ -248,6 +298,7 @@ func (s Storage) ListPosts(uid int64) ([]Post, error) {
 
 	for rows.Next() {
 		var p Post
+		var locationJSON []byte
 		if err := rows.Scan(&p.ID,
 			&p.UserID,
 			&p.Text,
@@ -260,10 +311,20 @@ func (s Storage) ListPosts(uid int64) ([]Post, error) {
 			&p.SuggestedDishName,
 			&p.SuggestedIngredients,
 			&p.IsSpam,
+			&p.LocationID,
 			&p.User,
 			&p.Tags,
+			&locationJSON,
 		); err != nil {
 			return nil, err
+		}
+
+		if p.LocationID != nil {
+			var location Location
+			if err := json.Unmarshal(locationJSON, &location); err != nil {
+				return nil, err
+			}
+			p.Location = &location
 		}
 
 		reactionQuery := `

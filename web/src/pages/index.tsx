@@ -1,5 +1,5 @@
 import { For, onCleanup, onMount, Show } from 'solid-js'
-import { IconUpset, IconSmile, IconNeutral } from '~/components/icons'
+import { IconUpset, IconSmile, IconNeutral, IconMap } from '~/components/icons'
 import { cn, timeSince } from '~/lib/utils'
 import { useMainButton } from '~/lib/useMainButton'
 import { useNavigate } from '@solidjs/router'
@@ -26,6 +26,13 @@ type Post = {
 		frown: number
 		smile: number
 		meh: number
+	}
+	location_id: number | null
+	location: {
+		id: number
+		latitude: number
+		longitude: number
+		address: string
 	}
 	user_reaction: {
 		type: string
@@ -131,8 +138,16 @@ export default function HomePage() {
 										alt="User"
 									/>
 									<div class="flex flex-col items-start justify-start">
-										<p class="text-sm text-hint">{item.user.first_name}</p>
-										<p class="text-xs text-hint">{item.user.username}</p>
+										<p class="text-sm font-semibold text-hint">
+											{item.user.username}
+										</p>
+										<Show when={item.location}>
+											<div class="flex flex-row items-center justify-start gap-1.5">
+												<p class="line-clamp-1 text-xs text-hint">
+													{item.location.address}
+												</p>
+											</div>
+										</Show>
 									</div>
 								</Link>
 								<img
@@ -144,10 +159,10 @@ export default function HomePage() {
 									<p class="text-sm text-hint">
 										{item.text || item.suggested_dish_name}
 									</p>
-									<div class="mt-4 flex flex-row flex-wrap items-center justify-start">
+									<div class="mt-4 flex flex-row flex-wrap items-center justify-start gap-1.5">
 										<For each={item.suggested_ingredients}>
 											{(ingredient) => (
-												<span class="mb-1.5 mr-1.5 rounded-lg bg-background px-2 py-0.5 text-xs text-hint">
+												<span class="flex h-6 items-center justify-center rounded-lg bg-background px-2 py-0.5 text-xs text-hint">
 													{ingredient}
 												</span>
 											)}
