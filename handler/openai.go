@@ -51,6 +51,14 @@ func getRequestBody(imageUrl string) string {
                         "type": "string",
                         "description": "Short-name of dish displayed on photo"
                     },
+					"tags": {
+						"type": "array",
+						"items": {
+							"type": "string",
+							"enum": ["Keto", "Vegan", "Vegetarian", "Gluten-Free", "Paleo", "Dairy-Free", "Organic", "Low-Carb", "High-Protein", "Mediterranean", "Fast Food", "Street Food", "Comfort Food", "Healthy", "Desserts", "Breakfast", "Brunch", "Lunch", "Dinner", "Snacks", "Drinks", "Smoothies", "Juices", "Alcoholic Beverages", "Non-Alcoholic Beverages", "Coffee", "Tea", "Seafood", "Meat Lovers", "Salads"]
+						},
+						"description": "Tags that describe the dish displayed on photo"
+					},
                     "ingredients": {
                         "type": "array",
                         "items": {
@@ -123,11 +131,16 @@ func sendOpenAIRequest(reqBody string, token string) (*OpenAIResponse, error) {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
-
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read response body: %w", err)
+		}
+
+		return nil, fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, body)
+	}
 
 	body, err := io.ReadAll(resp.Body)
 
@@ -148,6 +161,7 @@ type FunctionResponse struct {
 	DishName    string   `json:"dish"`
 	Ingredients []string `json:"ingredients"`
 	IsSpam      bool     `json:"spam"`
+	Tags        []string `json:"tags"`
 }
 
 func GetFoodPictureInfo(imgUrl string, openAIKey string) (*FunctionResponse, error) {
@@ -184,6 +198,7 @@ func GetFoodPictureInfo(imgUrl string, openAIKey string) (*FunctionResponse, err
 	log.Printf("DishName: %s\n", functionResponse.DishName)
 	log.Printf("Ingredients: %v\n", functionResponse.Ingredients)
 	log.Printf("Is Spam: %v\n", functionResponse.IsSpam)
+	log.Printf("Tags: %v\n", functionResponse.Tags)
 
 	return &functionResponse, nil
 }

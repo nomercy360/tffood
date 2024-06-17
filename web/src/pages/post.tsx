@@ -73,7 +73,7 @@ export default function PostPage() {
 				setEditPost('photo', file_name)
 				const resp = await fetchCreatePost(editPost)
 				setEditPost('text', resp.suggested_dish_name)
-				setTags(resp.suggested_ingredients)
+				setTags(resp.suggested_tags)
 				await queryClient.invalidateQueries({ queryKey: ['posts'] })
 				// navigate('/')
 			} catch (e) {

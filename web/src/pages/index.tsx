@@ -22,6 +22,7 @@ type Post = {
 	photo_url: string
 	suggested_ingredients: string[]
 	suggested_dish_name: string
+	suggested_tags: string[]
 	reactions: {
 		frown: number
 		smile: number
@@ -160,7 +161,7 @@ export default function HomePage() {
 										{item.text || item.suggested_dish_name}
 									</p>
 									<div class="mt-4 flex flex-row flex-wrap items-center justify-start gap-1.5">
-										<For each={item.suggested_ingredients}>
+										<For each={item.suggested_tags}>
 											{(ingredient) => (
 												<span class="flex h-6 items-center justify-center rounded-lg bg-background px-2 py-0.5 text-xs text-hint">
 													{ingredient}

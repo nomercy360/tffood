@@ -82,6 +82,7 @@ func (h Handler) CreatePost(c echo.Context) error {
 
 	post.SuggestedIngredients = info.Ingredients
 	post.SuggestedDishName = &info.DishName
+	post.SuggestedTags = info.Tags
 	post.IsSpam = info.IsSpam
 
 	res, err := h.st.CreatePost(uid, post, req.Tags)

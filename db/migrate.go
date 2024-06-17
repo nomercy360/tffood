@@ -41,6 +41,7 @@ func (s Storage) Migrate() error {
 		    is_spam BOOLEAN NOT NULL DEFAULT FALSE,
 		    suggested_dish_name TEXT,
 		    suggested_ingredients TEXT,
+		    suggested_tags TEXT,
 		    location_id INTEGER,
 		    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
 		    FOREIGN KEY (location_id) REFERENCES locations (id) ON DELETE SET NULL

@@ -75,6 +75,7 @@ type Post struct {
 	Ingredients          ArrayString   `json:"ingredients" db:"ingredients"`
 	SuggestedDishName    *string       `json:"suggested_dish_name" db:"suggested_dish_name"`
 	SuggestedIngredients ArrayString   `json:"suggested_ingredients" db:"suggested_ingredients"`
+	SuggestedTags        ArrayString   `json:"suggested_tags" db:"suggested_tags"`
 	IsSpam               bool          `json:"is_spam" db:"is_spam"`
 	Location             *Location     `json:"location" db:"location"`
 	Reactions            PostReactions `json:"reactions" db:"-"`
@@ -143,6 +144,7 @@ func (s Storage) GetPostByID(uid, id int64) (*Post, error) {
 			   p.dish_name,
 			   p.suggested_dish_name,
 			   p.suggested_ingredients,
+			   p.suggested_tags,
 			   p.is_spam,
 			   p.location_id,
 			   json_object('id', u.id, 'last_name', u.last_name, 'first_name', u.first_name, 'avatar_url', u.avatar_url, 'title',
@@ -174,6 +176,7 @@ func (s Storage) GetPostByID(uid, id int64) (*Post, error) {
 		&post.DishName,
 		&post.SuggestedDishName,
 		&post.SuggestedIngredients,
+		&post.SuggestedTags,
 		&post.IsSpam,
 		&post.LocationID,
 		&post.User,
@@ -225,11 +228,11 @@ func (s Storage) CreatePost(uid int64, post Post, tags []int) (*Post, error) {
 	}
 
 	query := `
-		INSERT INTO posts (user_id, text, photo_url, suggested_dish_name, suggested_ingredients, is_spam, location_id)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO posts (user_id, text, photo_url, suggested_dish_name, suggested_ingredients, suggested_tags, is_spam, location_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
-	res, err := s.db.Exec(query, uid, post.Text, post.PhotoURL, post.SuggestedDishName, post.SuggestedIngredients, post.IsSpam, locationID)
+	res, err := s.db.Exec(query, uid, post.Text, post.PhotoURL, post.SuggestedDishName, post.SuggestedIngredients, post.SuggestedTags, post.IsSpam, locationID)
 
 	if err != nil {
 		return nil, err
@@ -273,6 +276,7 @@ func (s Storage) ListPosts(uid int64) ([]Post, error) {
 			   p.dish_name,
 			   p.suggested_dish_name,
 			   p.suggested_ingredients,
+			   p.suggested_tags,
 			   p.is_spam,
 			   p.location_id,
 			   json_object('id', u.id, 'last_name', u.last_name, 'first_name', u.first_name, 'avatar_url', u.avatar_url,
@@ -310,6 +314,7 @@ func (s Storage) ListPosts(uid int64) ([]Post, error) {
 			&p.DishName,
 			&p.SuggestedDishName,
 			&p.SuggestedIngredients,
+			&p.SuggestedTags,
 			&p.IsSpam,
 			&p.LocationID,
 			&p.User,
