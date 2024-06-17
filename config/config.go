@@ -7,6 +7,7 @@ type Default struct {
 	CdnURL      string `env:"CDN_URL,required"`
 	ExternalURL string `env:"EXTERNAL_URL,required"`
 	WebAppURL   string `env:"WEB_APP_URL,required"`
+	OpenAIKey   string `env:"OPENAI_KEY,required"`
 	AWS         AWSConfig
 	Server      ServerConfig
 }

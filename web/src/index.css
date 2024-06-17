@@ -9,8 +9,6 @@
         --background: var(--tg-theme-secondary-bg-color, #212121);
         --hint: var(--tg-theme-hint-color, #aaaaaa);
         --link: var(--tg-theme-link-color, #8774e1);
-        --button: var(--tg-theme-button-color, #8774e1);
-        --button-foreground: var(--tg-theme-button-text-color, #ffffff);
         --secondary-bg: var(--tg-theme-bg-color, #0f0f0f);
         --header-bg: var(--tg-theme-header-bg-color, #212121);
         --accent-foreground: var(--tg-theme-accent-text-color, #8774e1);
@@ -18,8 +16,16 @@
         --section-header-text: var(--tg-theme-section-header-text-color, #aaaaaa);
         --secondary-foreground: var(--tg-theme-subtitle-text-color, #aaaaaa);
         --destructive-text: var(--tg-theme-destructive-text-color, #e53935);
-
+        --primary-bg: #121212;
+        --primary-foreground: #ffffff;
         --input: var(--tg-theme-hint-color, #aaaaaa);
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --primary-bg: #ffffff;
+            --primary-foreground: #121212;
+        }
     }
 }
 

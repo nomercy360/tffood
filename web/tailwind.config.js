@@ -16,9 +16,9 @@ module.exports = {
 				foreground: 'var(--foreground)',
 				hint: 'var(--hint)',
 				link: 'var(--link)',
-				button: {
-					DEFAULT: 'var(--button)',
-					foreground: 'var(--button-foreground)',
+				primary: {
+					DEFAULT: 'var(--primary-bg)',
+					foreground: 'var(--primary-foreground)',
 				},
 				secondary: {
 					DEFAULT: 'var(--secondary-bg)',

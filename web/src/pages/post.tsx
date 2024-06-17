@@ -219,8 +219,9 @@ export default function PostPage() {
 						{(tag) => (
 							<button
 								class={cn(
-									'flex h-8 items-center justify-center rounded-lg px-4 text-sm font-medium text-foreground',
-									editPost.tags.includes(tag.id) && 'bg-background',
+									'flex h-8 items-center justify-center rounded-lg bg-background px-4 text-sm font-medium text-foreground',
+									editPost.tags.includes(tag.id) &&
+										'bg-primary text-primary-foreground',
 								)}
 								onClick={() =>
 									setEditPost(

@@ -1,8 +1,10 @@
 package db
 
 import (
+	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -51,18 +53,47 @@ func (up *UserProfile) Scan(src interface{}) error {
 }
 
 type Post struct {
-	ID        int64       `db:"id" json:"id"`
-	UserID    int64       `db:"user_id" json:"user_id"`
-	Text      string      `db:"text" json:"text"`
-	CreatedAt time.Time   `db:"created_at" json:"created_at"`
-	UpdatedAt time.Time   `db:"updated_at" json:"updated_at"`
-	HiddenAt  *time.Time  `db:"hidden_at" json:"hidden_at"`
-	PhotoURL  string      `db:"photo_url" json:"photo_url"`
-	User      UserProfile `json:"user" db:"user"`
+	ID                   int64       `db:"id" json:"id"`
+	UserID               int64       `db:"user_id" json:"user_id"`
+	Text                 string      `db:"text" json:"text"`
+	CreatedAt            time.Time   `db:"created_at" json:"created_at"`
+	UpdatedAt            time.Time   `db:"updated_at" json:"updated_at"`
+	HiddenAt             *time.Time  `db:"hidden_at" json:"hidden_at"`
+	PhotoURL             string      `db:"photo_url" json:"photo_url"`
+	User                 UserProfile `json:"user" db:"user"`
+	DishName             *string     `json:"dish_name" db:"dish_name"`
+	Ingredients          ArrayString `json:"ingredients" db:"ingredients"`
+	SuggestedDishName    *string     `json:"suggested_dish_name" db:"suggested_dish_name"`
+	SuggestedIngredients ArrayString `json:"suggested_ingredients" db:"suggested_ingredients"`
+	IsSpam               bool        `json:"is_spam" db:"is_spam"`
 
 	Reactions    PostReactions `json:"reactions" db:"-"`
 	UserReaction UserReaction  `json:"user_reaction" db:"-"`
 	Tags         TagSlice      `json:"tags" db:"-"`
+}
+
+type ArrayString []string
+
+func (as *ArrayString) Scan(src interface{}) error {
+	switch src := src.(type) {
+	case nil:
+		*as = make([]string, 0)
+	case []byte:
+		*as = strings.Split(string(src), ";")
+	case string:
+		*as = strings.Split(src, ";")
+	default:
+		return fmt.Errorf("unsupported type: %T", src)
+	}
+	return nil
+}
+
+func (as ArrayString) Value() (driver.Value, error) {
+	if len(as) == 0 {
+		return nil, nil
+	}
+
+	return strings.Join(as, ";"), nil
 }
 
 type TagSlice []Tag
@@ -98,6 +129,11 @@ func (s Storage) GetPostByID(uid, id int64) (*Post, error) {
 			   p.updated_at,
 			   p.hidden_at,
 			   p.photo_url,
+			   p.ingredients,
+			   p.dish_name,
+			   p.suggested_dish_name,
+			   p.suggested_ingredients,
+			   p.is_spam,
 			   json_object('id', u.id, 'last_name', u.last_name, 'first_name', u.first_name, 'avatar_url', u.avatar_url, 'title',
 												   u.title, 'username', u.username) AS user,
 			   COALESCE(SUM(CASE WHEN r.type = 'smile' THEN 1 ELSE 0 END), 0) AS smile,
@@ -119,11 +155,17 @@ func (s Storage) GetPostByID(uid, id int64) (*Post, error) {
 		&post.UpdatedAt,
 		&post.HiddenAt,
 		&post.PhotoURL,
+		&post.Ingredients,
+		&post.DishName,
+		&post.SuggestedDishName,
+		&post.SuggestedIngredients,
+		&post.IsSpam,
 		&post.User,
 		&post.Reactions.Smile,
 		&post.Reactions.Frown,
 		&post.Reactions.Meh,
-		&post.UserReaction.Type)
+		&post.UserReaction.Type,
+	)
 
 	if IsNoRowsError(err) {
 		return nil, ErrNotFound
@@ -136,11 +178,11 @@ func (s Storage) GetPostByID(uid, id int64) (*Post, error) {
 
 func (s Storage) CreatePost(uid int64, post Post, tags []int) (*Post, error) {
 	query := `
-		INSERT INTO posts (user_id, text, photo_url)
-		VALUES (?, ?, ?)
+		INSERT INTO posts (user_id, text, photo_url, suggested_dish_name, suggested_ingredients, is_spam)
+		VALUES (?, ?, ?, ?, ?, ?)
 	`
 
-	res, err := s.db.Exec(query, uid, post.Text, post.PhotoURL)
+	res, err := s.db.Exec(query, uid, post.Text, post.PhotoURL, post.SuggestedDishName, post.SuggestedIngredients, post.IsSpam)
 
 	if err != nil {
 		return nil, err
@@ -180,6 +222,11 @@ func (s Storage) ListPosts(uid int64) ([]Post, error) {
 			   p.updated_at,
 			   p.hidden_at,
 			   p.photo_url,
+			   p.ingredients,
+			   p.dish_name,
+			   p.suggested_dish_name,
+			   p.suggested_ingredients,
+			   p.is_spam,
 			   json_object('id', u.id, 'last_name', u.last_name, 'first_name', u.first_name, 'avatar_url', u.avatar_url,
 						   'title',
 						   u.title, 'username', u.username)                                                        AS user,
@@ -201,8 +248,21 @@ func (s Storage) ListPosts(uid int64) ([]Post, error) {
 
 	for rows.Next() {
 		var p Post
-		err := rows.Scan(&p.ID, &p.UserID, &p.Text, &p.CreatedAt, &p.UpdatedAt, &p.HiddenAt, &p.PhotoURL, &p.User, &p.Tags)
-		if err != nil {
+		if err := rows.Scan(&p.ID,
+			&p.UserID,
+			&p.Text,
+			&p.CreatedAt,
+			&p.UpdatedAt,
+			&p.HiddenAt,
+			&p.PhotoURL,
+			&p.Ingredients,
+			&p.DishName,
+			&p.SuggestedDishName,
+			&p.SuggestedIngredients,
+			&p.IsSpam,
+			&p.User,
+			&p.Tags,
+		); err != nil {
 			return nil, err
 		}
 

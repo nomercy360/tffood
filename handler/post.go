@@ -58,6 +58,16 @@ func (h Handler) CreatePost(c echo.Context) error {
 		PhotoURL: fmt.Sprintf("%s/%s", h.config.CdnURL, req.Photo),
 	}
 
+	info, err := GetFoodPictureInfo(post.PhotoURL, h.config.OpenAIKey)
+
+	if err != nil {
+		return err
+	}
+
+	post.SuggestedIngredients = info.Ingredients
+	post.SuggestedDishName = &info.DishName
+	post.IsSpam = info.IsSpam
+
 	res, err := h.st.CreatePost(uid, post, req.Tags)
 
 	if err != nil {

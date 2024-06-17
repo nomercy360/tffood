@@ -26,9 +26,14 @@ func (s Storage) Migrate() error {
 		    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		    hidden_at TIMESTAMP,
 		    photo_url TEXT,
+		    ingredients TEXT,
+		    dish_name TEXT,
+		    is_spam BOOLEAN NOT NULL DEFAULT FALSE,
+		    suggested_dish_name TEXT,
+		    suggested_ingredients TEXT,
 		    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 		);
-
+		
 		CREATE TABLE IF NOT EXISTS comments (
 		    id INTEGER PRIMARY KEY,
 		    user_id INTEGER NOT NULL,

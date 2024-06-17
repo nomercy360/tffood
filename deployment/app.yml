@@ -21,7 +21,7 @@ spec:
         service: tffood-api
     spec:
       containers:
-        - image: maksim1111/tffood-api:latest
+        - image: maksim1111/tffood-api:20240616-11cdca4
           name: tffood-api
           imagePullPolicy: Always
           command: [ "/app/main" ]

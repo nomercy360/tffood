@@ -20,6 +20,8 @@ type Post = {
 	updated_at: string
 	hidden_at: string | null
 	photo_url: string
+	suggested_ingredients: string[]
+	suggested_dish_name: string
 	reactions: {
 		frown: number
 		smile: number
@@ -139,7 +141,18 @@ export default function HomePage() {
 									alt="Thumbnail"
 								/>
 								<div class="p-3.5">
-									<p class="text-sm text-hint">{item.text}</p>
+									<p class="text-sm text-hint">
+										{item.text || item.suggested_dish_name}
+									</p>
+									<div class="mt-4 flex flex-row flex-wrap items-center justify-start">
+										<For each={item.suggested_ingredients}>
+											{(ingredient) => (
+												<span class="mb-1.5 mr-1.5 rounded-lg bg-background px-2 py-0.5 text-xs text-hint">
+													{ingredient}
+												</span>
+											)}
+										</For>
+									</div>
 									<div class="mt-4 flex w-full flex-row items-center justify-between">
 										<div class="flex flex-row items-center justify-start gap-2">
 											<button
