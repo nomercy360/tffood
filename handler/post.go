@@ -81,7 +81,7 @@ func GetAIUpdatedPost(post *db.Post, openAIKey string) (*db.Post, error) {
 		return nil, err
 	}
 
-	post.SuggestedIngredients = info.Ingredients
+	// post.SuggestedIngredients = info.Ingredients
 	post.SuggestedDishName = &info.DishName
 	post.SuggestedTags = info.Tags
 	post.IsSpam = info.IsSpam

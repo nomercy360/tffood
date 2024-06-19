@@ -38,39 +38,61 @@ func getRequestBody(imageUrl string) string {
     "tools": [{
         "type": "function",
         "function": {
-            "name": "DecomposeLaunch",
-            "description": "Name dish and ingredients of food displayed on photo",
+            "name": "analyzeFoodImage",
+            "description": "Analyzes an image of food to determine if it's spam, identify the dish, tag the image based on its contents, and list the ingredients along with their approximate amounts.",
             "parameters": {
                 "type": "object",
                 "properties": {
-					"spam": {
-						"type": "boolean",
-						"description": "True if photo is not related to food"
-					},
+                    "spam": {
+                        "type": "boolean",
+                        "description": "Indicates whether the image is considered spam or irrelevant to the task"
+                    },
                     "dish": {
                         "type": "string",
-                        "description": "Short-name of dish displayed on photo"
+                        "description": "The identified main dish in the image."
                     },
-					"tags": {
-						"type": "array",
-						"items": {
-							"type": "string",
-							"enum": ["Keto", "Vegan", "Vegetarian", "Gluten-Free", "Paleo", "Dairy-Free", "Organic", "Low-Carb", "High-Protein", "Mediterranean", "Fast Food", "Street Food", "Comfort Food", "Healthy", "Desserts", "Breakfast", "Brunch", "Lunch", "Dinner", "Snacks", "Drinks", "Smoothies", "Juices", "Alcoholic Beverages", "Non-Alcoholic Beverages", "Coffee", "Tea", "Seafood", "Meat Lovers", "Salads"]
-						},
-						"description": "Tags that describe the dish displayed on photo"
-					},
+                    "tags": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "vegetarian",
+                                "vegan",
+                                "gluten-free",
+                                "meat",
+                                "seafood",
+                                "dessert",
+                                "spicy",
+                                "sweet",
+                                "salty"
+                            ]
+                        },
+                        "description": "Tags that describe the dish displayed in the photo based on dietary preferences, ingredients, or taste profiles."
+                    },
                     "ingredients": {
                         "type": "array",
                         "items": {
-                            "type": "string"
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string",
+                                    "description": "Name of the ingredient"
+                                },
+                                "amount": {
+                                    "type": "number",
+                                    "description": "Approximate amount of the ingredient in grams"
+                                }
+                            },
+                            "required": ["name", "amount"]
                         },
-                        "description": "Name of all edible ingridient displayed on photo"
+                        "description": "List all visible ingredients and estimate the approximate amount of each in grams, using standard objects in the photo such as utensils or dishware for scale."
                     }
                 },
                 "required": [
                     "ingredients",
                     "dish",
-					"spam"
+                    "spam",
+                    "tags"
                 ]
             }
         }
@@ -158,10 +180,13 @@ func sendOpenAIRequest(reqBody string, token string) (*OpenAIResponse, error) {
 }
 
 type FunctionResponse struct {
-	DishName    string   `json:"dish"`
-	Ingredients []string `json:"ingredients"`
-	IsSpam      bool     `json:"spam"`
-	Tags        []string `json:"tags"`
+	DishName    string `json:"dish"`
+	Ingredients []struct {
+		Name   string  `json:"name"`
+		Amount float64 `json:"amount"`
+	}
+	IsSpam bool     `json:"spam"`
+	Tags   []string `json:"tags"`
 }
 
 func GetFoodPictureInfo(imgUrl string, openAIKey string) (*FunctionResponse, error) {
@@ -188,7 +213,7 @@ func GetFoodPictureInfo(imgUrl string, openAIKey string) (*FunctionResponse, err
 	var functionResponse FunctionResponse
 
 	for _, toolCall := range choice.Message.ToolCalls {
-		if toolCall.Function.Name == "DecomposeLaunch" {
+		if toolCall.Function.Name == "analyzeFoodImage" {
 			if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &functionResponse); err != nil {
 				return nil, fmt.Errorf("failed to unmarshal function response: %w", err)
 			}
