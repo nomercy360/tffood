@@ -6,7 +6,7 @@ export default function NavigationTabs(props: any) {
 	const location = useLocation()
 
 	return (
-		<div class="pt-16">
+		<div class="pt-12">
 			<div class="fixed inset-0 flex h-16 w-full items-center bg-background px-4">
 				<div class="flex w-full flex-row items-center justify-start space-x-4">
 					<ul

@@ -163,7 +163,8 @@ export default function HomePage() {
 									<div class="mt-4 flex flex-row flex-wrap items-center justify-start gap-1.5">
 										<For each={item.suggested_tags}>
 											{(ingredient) => (
-												<span class="flex h-6 items-center justify-center rounded-lg bg-background px-2 py-0.5 text-xs text-hint">
+												<span
+													class="flex h-6 items-center justify-center rounded-lg bg-background px-2 py-0.5 text-xs text-hint">
 													{ingredient}
 												</span>
 											)}
@@ -175,8 +176,8 @@ export default function HomePage() {
 												class={cn(
 													'flex h-8 w-12 items-center justify-start gap-1.5 rounded-lg px-1.5 text-sm',
 													item.user_reaction.has_reacted &&
-														item.user_reaction.type === 'smile' &&
-														'bg-background',
+													item.user_reaction.type === 'smile' &&
+													'bg-background',
 												)}
 												onClick={() =>
 													mutateReact.mutate({ item, type: 'smile' })
@@ -189,8 +190,8 @@ export default function HomePage() {
 												class={cn(
 													'flex h-8 w-12 items-center justify-start gap-1.5 rounded-lg px-1.5 text-sm',
 													item.user_reaction.has_reacted &&
-														item.user_reaction.type === 'meh' &&
-														'bg-background',
+													item.user_reaction.type === 'meh' &&
+													'bg-background',
 												)}
 												onClick={() =>
 													mutateReact.mutate({ item, type: 'meh' })
@@ -203,8 +204,8 @@ export default function HomePage() {
 												class={cn(
 													'flex h-8 w-12 items-center justify-start gap-1.5 rounded-lg px-1.5 text-sm',
 													item.user_reaction.has_reacted &&
-														item.user_reaction.type === 'frown' &&
-														'bg-background',
+													item.user_reaction.type === 'frown' &&
+													'bg-background',
 												)}
 												onClick={() => {
 													mutateReact.mutate({ item, type: 'frown' })

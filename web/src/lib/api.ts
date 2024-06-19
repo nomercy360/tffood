@@ -3,13 +3,13 @@ import { store } from '~/lib/store'
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string
 
 export const apiFetch = async ({
-	endpoint,
-	method = 'GET',
-	body = null,
-	showProgress = true,
-	contentType = 'application/json',
-	responseContentType = 'json' as 'json' | 'blob',
-}: {
+																 endpoint,
+																 method = 'GET',
+																 body = null,
+																 showProgress = true,
+																 contentType = 'application/json',
+																 responseContentType = 'json' as 'json' | 'blob',
+															 }: {
 	endpoint: string
 	method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
 	body?: unknown
@@ -47,10 +47,10 @@ export const apiFetch = async ({
 	}
 
 	switch (response.status) {
-		case 204:
-			return true
-		default:
-			return response[responseContentType as 'json' | 'blob']()
+	case 204:
+		return true
+	default:
+		return response[responseContentType as 'json' | 'blob']()
 	}
 }
 
@@ -64,6 +64,24 @@ export async function fetchCreatePost(post: any) {
 		endpoint: '/posts',
 		method: 'POST',
 		body: post,
+	})
+
+	return response as any
+}
+
+export async function fetchUpdatePost(id: number, post: any) {
+	const response = await apiFetch({
+		endpoint: `/posts/${id}`,
+		method: 'PUT',
+		body: post,
+	})
+
+	return response as any
+}
+
+export async function fetchPostAISuggestions(id: number) {
+	const response = await apiFetch({
+		endpoint: `/posts/${id}/ai`,
 	})
 
 	return response as any

@@ -34,6 +34,7 @@ module.exports = {
 				},
 				'subtitle-text': 'var(--subtitle-text)',
 				'destructive-text': 'var(--destructive-text)',
+				border: 'var(--border)',
 			},
 		},
 	},

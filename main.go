@@ -189,6 +189,8 @@ func main() {
 
 	g.GET("/posts", h.GetPosts)
 	g.POST("/posts", h.CreatePost)
+	g.PUT("/posts/:id", h.UpdatePost)
+	g.GET("/posts/:id/ai", h.CreatePostAISuggestions)
 	g.GET("/posts/:id", h.GetPost)
 	g.GET("/tags", h.GetTags)
 	g.POST("/presigned-url", h.GetPresignedURL)

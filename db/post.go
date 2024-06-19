@@ -64,7 +64,7 @@ type Location struct {
 type Post struct {
 	ID                   int64         `db:"id" json:"id"`
 	UserID               int64         `db:"user_id" json:"user_id"`
-	Text                 string        `db:"text" json:"text"`
+	Text                 *string       `db:"text" json:"text"`
 	LocationID           *int64        `db:"location_id" json:"location_id"`
 	CreatedAt            time.Time     `db:"created_at" json:"created_at"`
 	UpdatedAt            time.Time     `db:"updated_at" json:"updated_at"`
@@ -204,36 +204,13 @@ func (s Storage) GetPostByID(uid, id int64) (*Post, error) {
 	return &post, nil
 }
 
-func (s Storage) CreatePost(uid int64, post Post, tags []int) (*Post, error) {
-	var locationID *int64
+func (s Storage) CreatePost(uid int64, post Post) (*Post, error) {
+	postQuery := `
+        INSERT INTO posts (user_id, photo_url, hidden_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+    `
 
-	if post.Location != nil {
-		locationQuery := `
-			INSERT INTO locations (latitude, longitude, address, user_id)
-			VALUES (?, ?, ?, ?)
-		`
-
-		res, err := s.db.Exec(locationQuery, post.Location.Latitude, post.Location.Longitude, post.Location.Address, uid)
-		if err != nil {
-			return nil, err
-		}
-
-		id, err := res.LastInsertId()
-
-		if err != nil {
-			return nil, err
-		}
-
-		locationID = &id
-	}
-
-	query := `
-		INSERT INTO posts (user_id, text, photo_url, suggested_dish_name, suggested_ingredients, suggested_tags, is_spam, location_id)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-	`
-
-	res, err := s.db.Exec(query, uid, post.Text, post.PhotoURL, post.SuggestedDishName, post.SuggestedIngredients, post.SuggestedTags, post.IsSpam, locationID)
-
+	res, err := s.db.Exec(postQuery, uid, post.PhotoURL)
 	if err != nil {
 		return nil, err
 	}
@@ -244,19 +221,7 @@ func (s Storage) CreatePost(uid int64, post Post, tags []int) (*Post, error) {
 		return nil, err
 	}
 
-	if len(tags) > 0 {
-		tagQuery := `
-			INSERT INTO post_tags (post_id, tag_id)
-			VALUES (?, ?)
-		`
-
-		for _, tag := range tags {
-			_, err = s.db.Exec(tagQuery, id, tag)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
+	post.ID = id
 
 	return s.GetPostByID(uid, id)
 }
@@ -441,4 +406,97 @@ func (s Storage) ListTags() ([]Tag, error) {
 	}
 
 	return tags, nil
+}
+
+func (s Storage) UpdatePostSuggestions(uid, postID int64, post Post) (*Post, error) {
+	updateQuery := `
+		UPDATE posts
+		SET suggested_dish_name = ?, suggested_ingredients = ?, suggested_tags = ?, is_spam = ?
+		WHERE id = ? AND user_id = ?
+	`
+
+	res, err := s.db.Exec(updateQuery, post.SuggestedDishName, post.SuggestedIngredients, post.SuggestedTags, post.IsSpam, postID, uid)
+	if err != nil {
+		return nil, err
+	}
+
+	if rowsAffected, _ := res.RowsAffected(); rowsAffected == 0 {
+		return nil, ErrNotFound
+	}
+
+	return s.GetPostByID(uid, postID)
+}
+
+func (s Storage) UpdatePost(uid, postID int64, post Post, tags []int) (*Post, error) {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	var locationID *int64
+
+	if post.Location != nil {
+		locationQuery := `
+            INSERT INTO locations (latitude, longitude, address, user_id)
+            VALUES (?, ?, ?, ?)
+        `
+
+		res, err := tx.Exec(locationQuery, post.Location.Latitude, post.Location.Longitude, post.Location.Address, uid)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+
+		id, err := res.LastInsertId()
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+
+		locationID = &id
+	}
+
+	updateQuery := `
+        UPDATE posts
+        SET text = ?, photo_url = ?, location_id = ?, updated_at = CURRENT_TIMESTAMP, hidden_at = NULL
+        WHERE id = ? AND user_id = ?
+    `
+
+	_, err = tx.Exec(updateQuery, post.Text, post.PhotoURL, post.SuggestedDishName, post.SuggestedIngredients, post.SuggestedTags, post.IsSpam, locationID, postID, uid)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	if len(tags) > 0 {
+		deleteQuery := `
+            DELETE FROM post_tags
+            WHERE post_id = ?
+        `
+
+		_, err = tx.Exec(deleteQuery, postID)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+
+		tagQuery := `
+            INSERT INTO post_tags (post_id, tag_id)
+            VALUES (?, ?)
+        `
+
+		for _, tag := range tags {
+			_, err = tx.Exec(tagQuery, postID, tag)
+			if err != nil {
+				tx.Rollback()
+				return nil, err
+			}
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return s.GetPostByID(uid, postID)
 }

@@ -17,7 +17,8 @@ type s3Client interface {
 type storage interface {
 	GetUserByID(params db.UserQuery) (*db.User, error)
 	CreateUser(user db.User) (*db.User, error)
-	CreatePost(uid int64, post db.Post, tags []int) (*db.Post, error)
+	CreatePost(uid int64, post db.Post) (*db.Post, error)
+	UpdatePost(uid, postID int64, post db.Post, tags []int) (*db.Post, error)
 	ListPosts(uid int64) ([]db.Post, error)
 	GetPostByID(uid, id int64) (*db.Post, error)
 	DeletePostReaction(uid, postID int64) error
@@ -25,6 +26,7 @@ type storage interface {
 	ListTags() ([]db.Tag, error)
 	UpdateUserAvatarURL(uid int64, url string) error
 	DeleteUserByID(uid int64) error
+	UpdatePostSuggestions(uid, postID int64, post db.Post) (*db.Post, error)
 }
 
 type Handler struct {

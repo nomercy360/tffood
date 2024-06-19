@@ -4,25 +4,30 @@ import {
 	createSignal,
 	For,
 	Match,
-	onCleanup,
+	onCleanup, onMount,
 	Show,
 	Switch,
 } from 'solid-js'
 import { useMainButton } from '~/lib/useMainButton'
 import { IconClose, IconMap, IconSparkles } from '~/components/icons'
-import { fetchCreatePost, fetchPresignedUrl, fetchTags } from '~/lib/api'
+import { fetchCreatePost, fetchPostAISuggestions, fetchPresignedUrl, fetchTags, fetchUpdatePost } from '~/lib/api'
 import { useNavigate } from '@solidjs/router'
 import { queryClient } from '~/App'
 import { cn } from '~/lib/utils'
+import { addToast } from '~/components/toast'
 
 type CreatePost = {
-	text: string
+	id: number | null
+	text: string | null
 	photo: string
 	location: {
 		latitude: number | null
 		longitude: number | null
 		address: string | null
 	}
+	suggested_dish_name: string | null
+	suggested_ingredients: string[]
+	suggested_tags: string[]
 	tags: string[]
 }
 
@@ -40,7 +45,8 @@ async function uploadToS3(url: string, file: File) {
 }
 
 export default function PostPage() {
-	const [editPost, setEditPost] = createStore({
+	const [editPost, setEditPost] = createStore<CreatePost>({
+		id: null,
 		text: '',
 		photo: '',
 		tags: [],
@@ -49,7 +55,12 @@ export default function PostPage() {
 			longitude: null,
 			address: null,
 		},
-	} as CreatePost)
+		suggested_dish_name: null,
+		suggested_ingredients: [],
+		suggested_tags: [],
+	})
+
+	const [step, setStep] = createSignal(0)
 
 	const [loading, setLoading] = createSignal(false)
 	const [postLoading, setPostLoading] = createSignal(false)
@@ -63,40 +74,77 @@ export default function PostPage() {
 
 	const navigate = useNavigate()
 
-	const savePost = async () => {
+	const createPost = async () => {
 		if (imgFile() && imgFile() !== null) {
-			mainButton.disable('Save')
-			setPostLoading(true)
+			mainButton.showProgress(false)
 			try {
 				const { file_name, url } = await fetchPresignedUrl(imgFile()!.name)
 				await uploadToS3(url, imgFile()!)
 				setEditPost('photo', file_name)
 				const resp = await fetchCreatePost(editPost)
-				setEditPost('text', resp.suggested_dish_name)
-				setTags(resp.suggested_tags)
-				await queryClient.invalidateQueries({ queryKey: ['posts'] })
+				setEditPost('id', resp.id)
+				setStep(1)
+				mainButton.offClick(createPost)
+				mainButton.enable('Post').onClick(savePost)
 				// navigate('/')
 			} catch (e) {
 				console.error(e)
 			} finally {
-				mainButton.enable('Save')
-				// setImgFile(null)
-				// setPreviewUrl('')
-				setPostLoading(false)
+				mainButton.hideProgress()
 			}
 		}
 	}
 
+	const savePost = async () => {
+		try {
+			mainButton.showProgress(false)
+			await fetchUpdatePost(editPost.id!, editPost)
+			await queryClient.invalidateQueries({ queryKey: ['posts'] })
+			navigate('/')
+		} catch (e) {
+			console.error(e)
+		} finally {
+			mainButton.hideProgress()
+		}
+	}
+
+	const postAISuggestions = async () => {
+		try {
+			setPostLoading(true)
+			const resp = await fetchPostAISuggestions(editPost.id!)
+			setEditPost('suggested_dish_name', resp.suggested_dish_name)
+			setEditPost('text', resp.suggested_dish_name)
+			setEditPost('suggested_ingredients', resp.suggested_ingredients)
+			setEditPost('suggested_tags', resp.suggested_tags)
+		} catch (e) {
+			console.error(e)
+		} finally {
+			setPostLoading(false)
+		}
+	}
+
+	const errorToast = () => {
+		addToast('Some error occurred')
+	}
+
+	onMount(async () => {
+		mainButton.onClick(createPost)
+	})
+
 	createEffect(() => {
-		if (imgFile()) {
-			mainButton.enable('Save').onClick(savePost)
-		} else {
-			mainButton.disable('Save').onClick(savePost)
+		if (step() === 0) {
+			if (imgFile()) {
+				mainButton.enable('Next')
+			} else {
+				mainButton.disable('Next')
+			}
 		}
 	})
 
 	onCleanup(() => {
-		mainButton.hide().offClick(savePost)
+		mainButton.hide()
+			.offClick(createPost)
+			.offClick(savePost)
 	})
 
 	const [currentLocation, setCurrentLocation] = createSignal<string>('')
@@ -165,111 +213,141 @@ export default function PostPage() {
 	}
 
 	return (
-		<section class="min-h-screen bg-secondary px-4 pb-14 pt-5">
-			<p class="text-2xl font-bold text-foreground">
-				What are you cooking today?
-			</p>
-			<p class="text-hint">Share your delicious meal with the world</p>
-			<Show
-				when={!previewUrl()}
-				fallback={
-					<ImagePreview img={previewUrl()} onRemove={() => setImgFile(null)} />
-				}
-			>
-				<label class="mt-4 flex h-10 items-center justify-start gap-4 rounded-lg border px-2 text-sm font-medium text-foreground">
-					<span class="text-nowrap">Choose picture</span>
-					<input
-						type="file"
-						class="sr-only mt-2 w-full rounded-lg bg-transparent p-2 text-foreground"
-						placeholder="Enter image"
-						accept="image/*"
-						onChange={(e) => handleFileChange(e)}
-					/>
-				</label>
-			</Show>
-			<Show when={previewUrl()}>
-				<label class="mt-6 block text-sm font-medium text-foreground">
-					Description
-					<div class="mt-2 flex flex-row items-center justify-between space-x-2">
-						<input
-							class="h-10 w-full resize-none rounded-lg border bg-transparent px-2 text-foreground"
-							placeholder="Describe what do you feel like sharing today"
-							value={editPost.text}
-							onInput={(e) => setEditPost('text', e.currentTarget.value)}
-						/>
-						<button
-							class="flex h-full w-8 items-center justify-center rounded-r-lg bg-transparent"
-							onClick={() => savePost()}
-						>
-							<Switch>
-								<Match when={!postLoading()}>
-									<IconSparkles class="size-5 text-foreground" />
-								</Match>
-								<Match when={postLoading()}>
-									<Spinner />
-								</Match>
-							</Switch>
-						</button>
-					</div>
-				</label>
-			</Show>
-			<label
-				class="mt-6 block w-full text-sm font-medium text-foreground"
-				for="location"
-			>
-				Location
-			</label>
-			<div class="mt-2 flex flex-row items-center justify-between space-x-2">
-				<input
-					type="text"
-					id="location"
-					class="h-10 w-full rounded-lg border bg-transparent px-2 text-foreground"
-					placeholder="Enter location"
-					value={editPost.location.address || ''}
-				/>
-				<button
-					class="flex h-full w-8 items-center justify-center rounded-full bg-transparent"
-					onClick={() => requestLocation()}
-					disabled={loading()}
-				>
-					<Switch>
-						<Match when={!loading()}>
-							<IconMap class="size-5 text-foreground" />
-						</Match>
-						<Match when={loading()}>
-							<Spinner />
-						</Match>
-					</Switch>
-				</button>
-			</div>
-			<Show when={tags().length > 0}>
-				<div class="mt-4 flex flex-col items-start justify-between">
-					<label class="text-sm">Suggested tags</label>
-					<div class="mt-2 flex flex-row flex-wrap items-center justify-start gap-2">
-						<For each={tags()}>
-							{(tag) => (
+		<>
+			<Switch>
+				<Match when={step() === 0}>
+					<Layout
+						title="Share your experience"
+						subtitle="What are you eating today?"
+						step={step()}
+					>
+						<Show when={!imgFile()} fallback={<ImagePreview img={previewUrl()} onRemove={() => setImgFile(null)} />}>
+							<label
+								class="mt-4 flex h-10 items-center justify-start gap-4 rounded-lg border px-2 text-sm font-medium text-foreground">
+								<span class="text-nowrap">Choose picture</span>
+								<input
+									type="file"
+									class="sr-only mt-2 w-full rounded-lg bg-transparent p-2 text-foreground"
+									placeholder="Enter image"
+									accept="image/*"
+									onChange={(e) => handleFileChange(e)}
+								/>
+							</label>
+						</Show>
+					</Layout>
+				</Match>
+				<Match when={step() === 1}>
+					<Layout
+						title="Add more details"
+						subtitle="What do you feel like sharing today?"
+						step={step()}
+					>
+						<ImagePreview img={previewUrl()} onRemove={() => setImgFile(null)} />
+						<label class="mt-6 block text-sm font-medium text-foreground">
+							Description
+							<div class="mt-2 flex flex-row items-center justify-between space-x-2">
+								<input
+									class="h-10 w-full resize-none rounded-lg border bg-transparent px-2 text-base font-normal text-foreground"
+									placeholder="Describe what do you feel like sharing today"
+									value={editPost.text || ''}
+									onInput={(e) => setEditPost('text', e.currentTarget.value)}
+									disabled={postLoading()}
+								/>
 								<button
-									class={cn(
-										'flex h-8 items-center justify-center rounded-lg bg-background px-4 text-sm font-medium text-foreground',
-										editPost.tags.includes(tag) &&
-											'bg-primary text-primary-foreground',
-									)}
-									onClick={() =>
-										setEditPost(
-											'tags',
-											editPost.tags.includes(tag)
-												? editPost.tags.filter((t) => t !== tag)
-												: [...editPost.tags, tag],
-										)
-									}
+									class="flex h-full w-8 items-center justify-center rounded-r-lg bg-transparent"
+									onClick={() => postAISuggestions()}
 								>
-									{tag}
+									<Switch>
+										<Match when={!postLoading()}>
+											<IconSparkles class="size-5 text-foreground" />
+										</Match>
+										<Match when={postLoading()}>
+											<Spinner />
+										</Match>
+									</Switch>
 								</button>
-							)}
-						</For>
-					</div>
-				</div>
-			</Show>
+							</div>
+						</label>
+						<label
+							class="mt-6 block w-full text-sm font-medium text-foreground"
+							for="location"
+						>
+							Location
+						</label>
+						<div class="mt-2 flex flex-row items-center justify-between space-x-2">
+							<input
+								type="text"
+								id="location"
+								class="h-10 w-full rounded-lg border bg-transparent px-2 text-foreground"
+								placeholder="Enter location"
+								value={editPost.location.address || ''}
+							/>
+							<button
+								class="flex h-full w-8 items-center justify-center rounded-full bg-transparent"
+								onClick={() => requestLocation()}
+								disabled={loading()}
+							>
+								<Switch>
+									<Match when={!loading()}>
+										<IconMap class="size-5 text-foreground" />
+									</Match>
+									<Match when={loading()}>
+										<Spinner />
+									</Match>
+								</Switch>
+							</button>
+						</div>
+						<Show when={editPost.suggested_tags.length > 0}>
+							<div class="mt-4 flex flex-col items-start justify-between">
+								<label class="text-sm">Suggested tags</label>
+								<div class="mt-2 flex flex-row flex-wrap items-center justify-start gap-2">
+									<For each={editPost.suggested_tags}>
+										{(tag) => (
+											<button
+												class={cn(
+													'flex h-8 items-center justify-center rounded-lg bg-background px-4 text-sm font-medium text-foreground',
+													editPost.tags.includes(tag) &&
+													'bg-primary text-primary-foreground',
+												)}
+												onClick={() =>
+													setEditPost(
+														'tags',
+														editPost.tags.includes(tag)
+															? editPost.tags.filter((t) => t !== tag)
+															: [...editPost.tags, tag],
+													)
+												}
+											>
+												{tag}
+											</button>
+										)}
+									</For>
+								</div>
+							</div>
+						</Show>
+					</Layout>
+				</Match>
+			</Switch>
+		</>
+	)
+}
+
+
+function Layout(props: { children: any, title: string, subtitle: string, step: number }) {
+	return (
+		<section class="min-h-screen bg-secondary pb-14 pt-5">
+			<div class="mb-5 h-0.5 w-full rounded-full bg-border">
+				<div class="h-0.5 rounded-full bg-primary" style={{ width: `${(props.step + 1) * 50}%` }} />
+			</div>
+			<div class="px-4">
+				<p class="text-2xl font-bold text-foreground">
+					{props.title}
+				</p>
+				<p class="text-hint">
+					{props.subtitle}
+				</p>
+				{props.children}
+			</div>
 		</section>
 	)
 }

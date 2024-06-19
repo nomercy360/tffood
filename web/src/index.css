@@ -19,19 +19,24 @@
         --primary-bg: #121212;
         --primary-foreground: #ffffff;
         --input: var(--tg-theme-hint-color, #aaaaaa);
+        --border: #e0e0e0;
     }
 
     @media (prefers-color-scheme: dark) {
         :root {
             --primary-bg: #ffffff;
             --primary-foreground: #121212;
+            --border: #323131;
         }
     }
 }
 
 @layer base {
     * {
-        @apply border-neutral-200 dark:border-neutral-700;
+        @apply border-border;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
     }
 
     body {
