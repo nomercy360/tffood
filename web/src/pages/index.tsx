@@ -160,6 +160,9 @@ export default function HomePage() {
 									<p class="text-sm text-hint">
 										{item.text || item.suggested_dish_name}
 									</p>
+									<p class="mt-2 text-xs text-hint">
+										Ingredients: {item.suggested_ingredients.join(', ')}
+									</p>
 									<div class="mt-4 flex flex-row flex-wrap items-center justify-start gap-1.5">
 										<For each={item.suggested_tags}>
 											{(ingredient) => (
