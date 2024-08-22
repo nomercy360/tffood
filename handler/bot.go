@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -8,6 +9,7 @@ import (
 	telegram "github.com/go-telegram/bot"
 	tgModels "github.com/go-telegram/bot/models"
 	"github.com/labstack/echo/v4"
+	nanoid "github.com/matoous/go-nanoid"
 	"io"
 	"log"
 	"net/http"
@@ -87,9 +89,27 @@ func (h Handler) HandleWebhook(c echo.Context) error {
 	} else {
 		log.Printf("User %d already exists, sending message", user.ChatID)
 
-		params := &telegram.SendMessageParams{ChatID: update.Message.Chat.ID, Text: "Open App", ReplyMarkup: &webApp, ParseMode: "Markdown"}
+		msg := &telegram.SendMessageParams{
+			ChatID:    update.Message.Chat.ID,
+			ParseMode: "Markdown",
+		}
 
-		if _, err := h.tg.SendMessage(context.Background(), params); err != nil {
+		if update.Message.Photo != nil && len(update.Message.Photo) > 0 {
+			if err := h.onImageMessage(user.ID, update); err != nil {
+				log.Printf("Failed to process image from telegram. User: %d, Error: %v", user.ID, err)
+				msg.Text = "Failed to process the image. Please try again."
+			} else {
+				msg.Text = "Image uploaded successfully"
+			}
+
+		} else if update.Message.Document != nil {
+			msg.Text = "Please send the picture as a 'Photo', not as a 'File'."
+		} else {
+			msg.Text = "You are already registered. Open the app to continue."
+			msg.ReplyMarkup = &webApp
+		}
+
+		if _, err := h.tg.SendMessage(context.Background(), msg); err != nil {
 			log.Printf("Failed to send message: %v", err)
 			return c.NoContent(http.StatusOK)
 		}
@@ -98,14 +118,105 @@ func (h Handler) HandleWebhook(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func extractReferrerID(arg string) int64 {
-	idStr := strings.TrimPrefix(arg, "friend")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		log.Printf("Failed to parse referrer ID: %v", err)
-		return 0
+func (h Handler) onImageMessage(uid int64, update tgModels.Update) error {
+	// find the most quality photo
+	photo := update.Message.Photo[len(update.Message.Photo)-1]
+
+	var caption *string
+	if update.Message.Caption != "" {
+		caption = &update.Message.Caption
 	}
-	return id
+
+	key, err := h.handlePhotoUpload(uid, photo)
+	if err != nil {
+		log.Printf("Failed to handle photo upload: %v", err)
+	}
+
+	log.Printf("Photo uploaded to bucket: %s", *key)
+
+	post := db.Post{
+		PhotoURL: fmt.Sprintf("%s/%s", h.config.CdnURL, *key),
+		Text:     caption,
+	}
+
+	res, err := h.st.CreatePost(uid, post)
+
+	if err != nil {
+		return err
+	}
+
+	// run AI model in the background
+	go func() {
+		_, err := h.runAISuggestions(uid, res.ID)
+		if err != nil {
+			log.Printf("Failed to run AI suggestions: %v", err)
+		}
+
+		msg := telegram.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "Your post has been successfully processed. Open the app to see the results.",
+		}
+
+		if _, err := h.tg.SendMessage(context.Background(), &msg); err != nil {
+			log.Printf("Failed to send message: %v", err)
+		}
+	}()
+
+	return nil
+}
+
+func (h Handler) handlePhotoUpload(uid int64, photo tgModels.PhotoSize) (*string, error) {
+	file, err := h.tg.GetFile(context.Background(), &telegram.GetFileParams{FileID: photo.FileID})
+	if err != nil {
+		log.Printf("Failed to get file: %v", err)
+		return nil, err
+	}
+
+	fileURL := h.tg.FileDownloadLink(file)
+
+	key, err := h.handleUploadToBucket(strconv.FormatInt(uid, 10), fileURL)
+
+	if err != nil {
+		log.Printf("Download/Upload failed: %v", err)
+		return nil, err
+	}
+
+	return key, nil
+}
+
+func (h Handler) handleUploadToBucket(idKey, fileURL string) (*string, error) {
+	resp, err := http.Get(fileURL)
+
+	if err != nil {
+		log.Printf("Failed to download file: %v", err)
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("Failed to download file: received non-200 response code %d", resp.StatusCode)
+		return nil, err
+	}
+
+	fileBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("Failed to read file content: %v", err)
+		return nil, err
+	}
+
+	fileReader := bytes.NewReader(fileBytes)
+
+	key := fmt.Sprintf("media/%s/%s.jpg", idKey, nanoid.MustID(8))
+
+	if err := h.s3Client.UploadFile(key, fileReader); err != nil {
+		log.Printf("Failed to upload file: %v", err)
+		return nil, err
+	}
+
+	log.Printf("File uploaded to bucket: %s", key)
+
+	return &key, nil
 }
 
 func (h Handler) createUser(update tgModels.Update) *db.User {
@@ -187,16 +298,16 @@ func (h Handler) handleUserAvatar(userID, tgUserID, chatID int64) {
 
 		defer resp.Body.Close()
 
-		data, err := io.ReadAll(resp.Body)
-
+		fileBytes, err := io.ReadAll(resp.Body)
 		if err != nil {
-			log.Printf("Failed to read file: %v", err)
-			return
+			log.Printf("Failed to read file content: %v", err)
 		}
+
+		fileReader := bytes.NewReader(fileBytes)
 
 		fileName := fmt.Sprintf("%d/%d.jpg", userID, chatID)
 
-		if err := h.s3Client.UploadFile(data, fileName); err != nil {
+		if err := h.s3Client.UploadFile(fileName, fileReader); err != nil {
 			log.Printf("Failed to upload user avatar to S3: %v", err)
 			return
 		}

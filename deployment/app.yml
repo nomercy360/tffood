@@ -48,7 +48,7 @@ spec:
           readinessProbe:
             exec:
               command: ["sqlite3", "/app/storage/db.sqlite", ".tables"]
-            initialDelaySeconds: 10
+            initialDelaySeconds: 0
             periodSeconds: 5
             timeoutSeconds: 2
   volumeClaimTemplates:

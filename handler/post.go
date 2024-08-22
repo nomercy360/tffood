@@ -93,28 +93,38 @@ func (h Handler) CreatePostAISuggestions(c echo.Context) error {
 	uid := getUserID(c)
 	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
 
-	post, err := h.st.GetPostByID(uid, id)
+	post, err := h.runAISuggestions(uid, id)
 
 	if err != nil {
 		return err
+	}
+
+	return c.JSON(http.StatusCreated, post)
+}
+
+func (h Handler) runAISuggestions(uid, postID int64) (*db.Post, error) {
+	post, err := h.st.GetPostByID(uid, postID)
+
+	if err != nil {
+		return nil, err
 	}
 
 	post, err = GetAIUpdatedPost(post, h.config.OpenAIKey)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	res, err := h.st.UpdatePostSuggestions(uid, id, *post)
+	res, err := h.st.UpdatePostSuggestions(uid, postID, *post)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	insights, err := GetNutritionInfo(formatIngredients(post.SuggestedIngredients), h.config.OpenAIKey)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	fi := db.FoodInsights{
@@ -125,9 +135,9 @@ func (h Handler) CreatePostAISuggestions(c echo.Context) error {
 		DietaryInformation: insights.DietaryInfo,
 	}
 
-	res, err = h.st.UpdatePostFoodInsights(uid, id, fi)
+	res, err = h.st.UpdatePostFoodInsights(uid, postID, fi)
 
-	return c.JSON(http.StatusOK, res)
+	return res, err
 }
 
 func (h Handler) UpdatePost(c echo.Context) error {

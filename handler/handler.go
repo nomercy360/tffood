@@ -2,6 +2,7 @@ package handler
 
 import (
 	telegram "github.com/go-telegram/bot"
+	"io"
 	"rednit/config"
 	"time"
 
@@ -11,7 +12,7 @@ import (
 
 type s3Client interface {
 	GetPresignedURL(fileName string, exp time.Duration) (string, error)
-	UploadFile(file []byte, fileName string) error
+	UploadFile(key string, file io.Reader) error
 }
 
 type storage interface {

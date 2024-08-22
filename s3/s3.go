@@ -1,10 +1,11 @@
 package storage
 
 import (
-	"bytes"
 	"context"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"io"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -59,11 +60,36 @@ func (s *S3Client) GetPresignedURL(objectKey string, duration time.Duration) (st
 	return request.URL, err
 }
 
-func (s *S3Client) UploadFile(file []byte, fileName string) error {
+func getContentTypeFromFileName(fileName string) string {
+	if strings.HasSuffix(fileName, ".jpg") || strings.HasSuffix(fileName, ".jpeg") {
+		return "image/jpeg"
+	}
+
+	if strings.HasSuffix(fileName, ".png") {
+		return "image/png"
+	}
+
+	if strings.HasSuffix(fileName, ".gif") {
+		return "image/gif"
+	}
+
+	if strings.HasSuffix(fileName, ".svg") {
+		return "image/svg+xml"
+	}
+
+	if strings.HasSuffix(fileName, ".webp") {
+		return "image/webp"
+	}
+
+	return "application/octet-stream"
+}
+
+func (s *S3Client) UploadFile(key string, file io.Reader) error {
 	_, err := s.S3Client.PutObject(context.TODO(), &s3.PutObjectInput{
-		Bucket: aws.String(s.Bucket),
-		Key:    aws.String(fileName),
-		Body:   bytes.NewReader(file),
+		Bucket:      aws.String(s.Bucket),
+		Key:         aws.String(key),
+		ContentType: aws.String(getContentTypeFromFileName(key)),
+		Body:        file,
 	})
 
 	if err != nil {
