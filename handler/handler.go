@@ -27,6 +27,7 @@ type storage interface {
 	UpdateUserAvatarURL(uid int64, url string) error
 	DeleteUserByID(uid int64) error
 	UpdatePostSuggestions(uid, postID int64, post db.Post) (*db.Post, error)
+	UpdatePostFoodInsights(uid, postID int64, data db.FoodInsights) (*db.Post, error)
 }
 
 type Handler struct {

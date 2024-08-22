@@ -43,6 +43,7 @@ func (s Storage) Migrate() error {
 		    suggested_ingredients TEXT,
 		    suggested_tags TEXT,
 		    location_id INTEGER,
+		    food_insights TEXT,
 		    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
 		    FOREIGN KEY (location_id) REFERENCES locations (id) ON DELETE SET NULL
 		);

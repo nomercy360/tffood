@@ -126,7 +126,6 @@ func getAuthConfig(secret string) echojwt.Config {
 
 func main() {
 	e := echo.New()
-	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
 	cfg := config.Default{}
@@ -171,6 +170,7 @@ func main() {
 	}))
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
 	e.Use(middleware.RequestLoggerWithConfig(getLoggerMiddleware(logger)))
 
 	e.HTTPErrorHandler = getServerErrorHandler(e)

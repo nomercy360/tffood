@@ -92,3 +92,20 @@ export function IconTriangle(props: IconProps) {
 		</Icon>
 	)
 }
+
+export function IconChevronDown(props: IconProps) {
+	return (
+		<Icon {...props}>
+
+			<path d="m6 9 6 6 6-6" />
+		</Icon>
+	)
+}
+
+export function IconChevronUp(props: IconProps) {
+	return (
+		<Icon {...props}>
+			<path d="m18 15-6-6-6 6" />
+		</Icon>
+	)
+}

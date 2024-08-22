@@ -1,5 +1,5 @@
-import { For, onCleanup, onMount, Show } from 'solid-js'
-import { IconUpset, IconSmile, IconNeutral, IconMap } from '~/components/icons'
+import { createSignal, For, onCleanup, onMount, Show } from 'solid-js'
+import { IconUpset, IconSmile, IconNeutral, IconMap, IconChevronDown, IconChevronUp } from '~/components/icons'
 import { cn, timeSince } from '~/lib/utils'
 import { useMainButton } from '~/lib/useMainButton'
 import { useNavigate } from '@solidjs/router'
@@ -20,7 +20,7 @@ type Post = {
 	updated_at: string
 	hidden_at: string | null
 	photo_url: string
-	suggested_ingredients: string[]
+	suggested_ingredients: { name: string; amount: number }[]
 	suggested_dish_name: string
 	suggested_tags: string[]
 	reactions: {
@@ -45,6 +45,13 @@ type Post = {
 		first_name: string
 		last_name: string
 		avatar_url: string
+	}
+	food_insights: {
+		calories: number,
+		proteins: number,
+		fats: number,
+		carbohydrates: number,
+		dietary_information: string[]
 	}
 }
 
@@ -160,9 +167,11 @@ export default function HomePage() {
 									<p class="text-sm text-hint">
 										{item.text || item.suggested_dish_name}
 									</p>
-									<p class="mt-2 text-xs text-hint">
-										Ingredients: {item.suggested_ingredients.join(', ')}
-									</p>
+									<Show when={item.suggested_ingredients?.length > 0}>
+										<p class="mt-2 text-xs text-hint">
+											Ingredients: {item.suggested_ingredients.map((i) => `${i.name} (${i.amount}g)`).join(', ')}
+										</p>
+									</Show>
 									<div class="mt-4 flex flex-row flex-wrap items-center justify-start gap-1.5">
 										<For each={item.suggested_tags}>
 											{(ingredient) => (
@@ -173,6 +182,9 @@ export default function HomePage() {
 											)}
 										</For>
 									</div>
+									<Show when={item.food_insights}>
+										<PostInsights insights={item.food_insights} />
+									</Show>
 									<div class="mt-4 flex w-full flex-row items-center justify-between">
 										<div class="flex flex-row items-center justify-start gap-2">
 											<button
@@ -239,6 +251,41 @@ function Loader() {
 			<div class="h-80 animate-pulse rounded-lg border bg-section" />
 			<div class="h-80 animate-pulse rounded-lg border bg-section" />
 			<div class="h-80 animate-pulse rounded-lg border bg-section" />
+		</div>
+	)
+}
+
+function PostInsights(props: { insights: Post['food_insights'] }) {
+	const [insightsVisible, setInsightsVisible] = createSignal(false)
+
+	return (
+		<div class="mt-4 flex flex-col items-start justify-start gap-1">
+			<button
+				class="mt-4 flex h-8 w-full items-center justify-start gap-1.5 text-sm text-hint"
+				onClick={() => setInsightsVisible(!insightsVisible())}
+			>
+				{insightsVisible() ? <IconChevronDown class="shrink-0" /> : <IconChevronUp class="shrink-0" />}
+				{insightsVisible() ? 'hide Insights' : 'show Insights'}
+			</button>
+			<Show when={insightsVisible()}>
+				<div class="mt-2 flex flex-col items-start justify-start gap-2 rounded-lg bg-background p-2">
+					<div class="text-sm">
+						<strong>Calories:</strong> {props.insights.calories} kcal
+					</div>
+					<div class="text-sm">
+						<strong>Proteins:</strong> {props.insights.proteins} g
+					</div>
+					<div class="text-sm">
+						<strong>Fats:</strong> {props.insights.fats} g
+					</div>
+					<div class="text-sm">
+						<strong>Carbohydrates:</strong> {props.insights.carbohydrates} g
+					</div>
+					<p class="text-sm">
+						<strong>Dietary Information:</strong> {props.insights.dietary_information.join(', ')}
+					</p>
+				</div>
+			</Show>
 		</div>
 	)
 }

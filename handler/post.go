@@ -81,10 +81,11 @@ func GetAIUpdatedPost(post *db.Post, openAIKey string) (*db.Post, error) {
 		return nil, err
 	}
 
-	// post.SuggestedIngredients = info.Ingredients
+	post.SuggestedIngredients = info.Ingredients
 	post.SuggestedDishName = &info.DishName
 	post.SuggestedTags = info.Tags
 	post.IsSpam = info.IsSpam
+
 	return post, nil
 }
 
@@ -109,6 +110,22 @@ func (h Handler) CreatePostAISuggestions(c echo.Context) error {
 	if err != nil {
 		return err
 	}
+
+	insights, err := GetNutritionInfo(formatIngredients(post.SuggestedIngredients), h.config.OpenAIKey)
+
+	if err != nil {
+		return err
+	}
+
+	fi := db.FoodInsights{
+		Calories:           int(insights.Calories),
+		Carbohydrates:      int(insights.Macros.Carbs),
+		Fats:               int(insights.Macros.Fats),
+		Proteins:           int(insights.Macros.Proteins),
+		DietaryInformation: insights.DietaryInfo,
+	}
+
+	res, err = h.st.UpdatePostFoodInsights(uid, id, fi)
 
 	return c.JSON(http.StatusOK, res)
 }

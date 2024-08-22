@@ -6,13 +6,16 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"rednit/db"
+	"regexp"
 	"strings"
+	"time"
 )
 
 func getRequestBody(imageUrl string) string {
 	// replace newlines with spaces
 	return fmt.Sprintf(`{
-    "model": "gpt-4o",
+    "model": "gpt-4o-2024-08-06",
     "messages": [
         {
             "role": "system",
@@ -35,12 +38,13 @@ func getRequestBody(imageUrl string) string {
             ]
         }
     ],
-    "tools": [{
-        "type": "function",
-        "function": {
-            "name": "analyzeFoodImage",
+    "response_format": {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "analyze_food_image",
             "description": "Analyzes an image of food to determine if it's spam, identify the dish, tag the image based on its contents, and list the ingredients along with their approximate amounts.",
-            "parameters": {
+            "strict": true,
+            "schema": {
                 "type": "object",
                 "properties": {
                     "spam": {
@@ -83,11 +87,13 @@ func getRequestBody(imageUrl string) string {
                                     "description": "Approximate amount of the ingredient in grams"
                                 }
                             },
+                            "additionalProperties": false,
                             "required": ["name", "amount"]
                         },
                         "description": "List all visible ingredients and estimate the approximate amount of each in grams, using standard objects in the photo such as utensils or dishware for scale."
                     }
                 },
+                 "additionalProperties": false,
                 "required": [
                     "ingredients",
                     "dish",
@@ -96,13 +102,97 @@ func getRequestBody(imageUrl string) string {
                 ]
             }
         }
-    }],
+    },
     "temperature": 0.7,
     "max_tokens": 150,
     "top_p": 1,
     "frequency_penalty": 0,
     "presence_penalty": 0
 }`, imageUrl)
+}
+
+func nutritionRequestBody(foodInfo string) string {
+	return fmt.Sprintf(`{
+    "model": "gpt-4o-2024-08-06",
+    "messages": [
+        {
+            "role": "system",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "What dish or food is displayed on this picture?"
+                }
+            ]
+        },
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "Analyzing the nutritional information of the food and provide insights on the calories, macronutrients, and dietary information.\n\nFood: %s"
+                }
+            ]
+        }
+    ],
+    "response_format": 
+        {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "formatNutritionalResponse",
+                "description": "Formats the nutritional analysis response into a structured, readable format for display or further processing. This function takes the raw data from a nutritional analysis and organizes it into sections for calories, macronutrients, micronutrients, and dietary suitability.",
+                "strict": true,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "calories": {
+                            "type": "number",
+                            "description": "Total calories of the dish."
+                        },
+                        "macronutrients": {
+                            "type": "object",
+                            "description": "Breakdown of macronutrients in grams.",
+                            "properties": {
+                                "carbohydrates": {
+                                    "type": "number"
+                                },
+                                "proteins": {
+                                    "type": "number"
+                                },
+                                "fats": {
+                                    "type": "number"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "required": [
+                                "carbohydrates",
+                                "proteins",
+                                "fats"
+                            ]
+                        },
+                        "dietaryInformation": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "description": "Information on the suitability of the dish for various diets."
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                        "calories",
+                        "macronutrients",
+                        "dietaryInformation"
+                    ]
+                }
+            }
+        }
+    ,
+    "temperature": 0.7,
+    "max_tokens": 150,
+    "top_p": 1,
+    "frequency_penalty": 0,
+    "presence_penalty": 0
+}`, foodInfo)
 }
 
 type OpenAIResponse struct {
@@ -113,18 +203,12 @@ type OpenAIResponse struct {
 	Choices []struct {
 		Index   int `json:"index"`
 		Message struct {
-			Role      string `json:"role"`
-			Content   string `json:"content"`
-			ToolCalls []struct {
-				ID       string `json:"id"`
-				Type     string `json:"type"`
-				Function struct {
-					Name      string `json:"name"`
-					Arguments string `json:"arguments"`
-				} `json:"function"`
-			} `json:"tool_calls"`
+			Role    string      `json:"role"`
+			Content string      `json:"content"`
+			Refusal interface{} `json:"refusal"`
 		} `json:"message"`
-		FinishReason string `json:"finish_reason"`
+		Logprobs     interface{} `json:"logprobs"`
+		FinishReason string      `json:"finish_reason"`
 	} `json:"choices"`
 	Usage struct {
 		PromptTokens     int `json:"prompt_tokens"`
@@ -132,6 +216,21 @@ type OpenAIResponse struct {
 		TotalTokens      int `json:"total_tokens"`
 	} `json:"usage"`
 	SystemFingerprint string `json:"system_fingerprint"`
+}
+
+func formatIngredients(ingredients []db.Ingredient) string {
+	var formattedIngredients string
+
+	for _, ingredient := range ingredients {
+		formattedIngredients += fmt.Sprintf("Ingredient: %s, Amount: %d grams\n", ingredient.Name, int(ingredient.Amount))
+	}
+
+	formattedIngredients = strings.ReplaceAll(formattedIngredients, `"`, `\"`)
+
+	re := regexp.MustCompile(`\r?\n`)
+	formattedIngredients = re.ReplaceAllString(formattedIngredients, " ")
+
+	return formattedIngredients
 }
 
 func sendOpenAIRequest(reqBody string, token string) (*OpenAIResponse, error) {
@@ -179,20 +278,27 @@ func sendOpenAIRequest(reqBody string, token string) (*OpenAIResponse, error) {
 	return &openAIResponse, nil
 }
 
-type FunctionResponse struct {
+type ImageRecognitionResponse struct {
 	DishName    string `json:"dish"`
-	Ingredients []struct {
-		Name   string  `json:"name"`
-		Amount float64 `json:"amount"`
-	}
-	IsSpam bool     `json:"spam"`
-	Tags   []string `json:"tags"`
+	Ingredients []db.Ingredient
+	IsSpam      bool     `json:"spam"`
+	Tags        []string `json:"tags"`
 }
 
-func GetFoodPictureInfo(imgUrl string, openAIKey string) (*FunctionResponse, error) {
-	log.Printf("Getting food picture info for %s\n", imgUrl)
+type NutritionResponse struct {
+	Calories float32 `json:"calories"`
+	Macros   struct {
+		Proteins float32 `json:"proteins"`
+		Fats     float32 `json:"fats"`
+		Carbs    float32 `json:"carbohydrates"`
+	} `json:"macronutrients"`
+	DietaryInfo []string `json:"dietaryInformation"`
+}
 
-	reqBody := getRequestBody(imgUrl)
+func GetNutritionInfo(foodInfo string, openAIKey string) (*NutritionResponse, error) {
+	log.Printf("Getting nutrition info for %s\n", foodInfo)
+
+	reqBody := nutritionRequestBody(foodInfo)
 
 	resp, err := sendOpenAIRequest(reqBody, openAIKey)
 
@@ -206,24 +312,104 @@ func GetFoodPictureInfo(imgUrl string, openAIKey string) (*FunctionResponse, err
 
 	choice := resp.Choices[0]
 
-	if choice.FinishReason != "tool_calls" {
+	if choice.FinishReason == "length" {
 		return nil, fmt.Errorf("unexpected finish reason: %s", choice.FinishReason)
 	}
 
-	var functionResponse FunctionResponse
+	var functionResponse NutritionResponse
 
-	for _, toolCall := range choice.Message.ToolCalls {
-		if toolCall.Function.Name == "analyzeFoodImage" {
-			if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &functionResponse); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal function response: %w", err)
-			}
+	if choice.Message.Refusal != nil {
+		return nil, fmt.Errorf("OpenAI refused to process the request. Here's why: %s", choice.Message.Content)
+	}
+
+	if choice.FinishReason == "content_filter" {
+		return nil, fmt.Errorf("OpenAI content filter triggered")
+	}
+
+	if choice.FinishReason == "stop" {
+		if err := json.Unmarshal([]byte(choice.Message.Content), &functionResponse); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal function response: %w", err)
 		}
 	}
 
-	log.Printf("DishName: %s\n", functionResponse.DishName)
-	log.Printf("Ingredients: %v\n", functionResponse.Ingredients)
-	log.Printf("Is Spam: %v\n", functionResponse.IsSpam)
-	log.Printf("Tags: %v\n", functionResponse.Tags)
+	log.Printf("Calories: %f\n", functionResponse.Calories)
+	log.Printf("Proteins: %f\n", functionResponse.Macros.Proteins)
+	log.Printf("Fats: %f\n", functionResponse.Macros.Fats)
+	log.Printf("Carbs: %f\n", functionResponse.Macros.Carbs)
+	log.Printf("Dietary Info: %v\n", functionResponse.DietaryInfo)
 
 	return &functionResponse, nil
+}
+
+func checkImageAvailable(imgUrl string) error {
+	check := func(url string) bool {
+		resp, err := http.Get(url)
+		if err != nil {
+			log.Printf("Failed to fetch image: %v\n", err)
+			return false
+		}
+		defer resp.Body.Close()
+		return resp.StatusCode == http.StatusOK
+	}
+
+	delays := []time.Duration{0, 1 * time.Second, 3 * time.Second}
+	for _, delay := range delays {
+		time.Sleep(delay)
+		if check(imgUrl) {
+			return nil
+		}
+		log.Printf("Retry after %v\n", delay)
+	}
+
+	log.Printf("Image not available after retries: %s\n", imgUrl)
+	return fmt.Errorf("image not available: %s", imgUrl)
+}
+
+func GetFoodPictureInfo(imgUrl string, openAIKey string) (*ImageRecognitionResponse, error) {
+	log.Printf("Getting food picture info for %s\n", imgUrl)
+
+	reqBody := getRequestBody(imgUrl)
+
+	if err := checkImageAvailable(imgUrl); err != nil {
+		return nil, err
+	}
+
+	resp, err := sendOpenAIRequest(reqBody, openAIKey)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to send OpenAI request: %w", err)
+	}
+
+	if len(resp.Choices) == 0 {
+		return nil, fmt.Errorf("no choices in OpenAI response")
+	}
+
+	choice := resp.Choices[0]
+
+	if choice.FinishReason == "length" {
+		return nil, fmt.Errorf("unexpected finish reason: %s", choice.FinishReason)
+	}
+
+	var imageResponse ImageRecognitionResponse
+
+	if choice.Message.Refusal != nil {
+		return nil, fmt.Errorf("OpenAI refused to process the request. Here's why: %s", choice.Message.Content)
+	}
+
+	if choice.FinishReason == "content_filter" {
+		return nil, fmt.Errorf("OpenAI content filter triggered")
+	}
+
+	if choice.FinishReason == "stop" {
+		if err := json.Unmarshal([]byte(choice.Message.Content), &imageResponse); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal function response: %w", err)
+		}
+	}
+
+	log.Printf("DishName: %s\n", imageResponse.DishName)
+	log.Printf("Ingredients: %v\n", imageResponse.Ingredients)
+	log.Printf("Is Spam: %v\n", imageResponse.IsSpam)
+	log.Printf("Tags: %v\n", imageResponse.Tags)
+
+	return &imageResponse, nil
 }

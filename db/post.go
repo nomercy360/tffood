@@ -74,16 +74,92 @@ type Post struct {
 	DishName             *string       `json:"dish_name" db:"dish_name"`
 	Ingredients          ArrayString   `json:"ingredients" db:"ingredients"`
 	SuggestedDishName    *string       `json:"suggested_dish_name" db:"suggested_dish_name"`
-	SuggestedIngredients ArrayString   `json:"suggested_ingredients" db:"suggested_ingredients"`
+	SuggestedIngredients Ingredients   `json:"suggested_ingredients" db:"suggested_ingredients"`
 	SuggestedTags        ArrayString   `json:"suggested_tags" db:"suggested_tags"`
 	IsSpam               bool          `json:"is_spam" db:"is_spam"`
 	Location             *Location     `json:"location" db:"location"`
 	Reactions            PostReactions `json:"reactions" db:"-"`
 	UserReaction         UserReaction  `json:"user_reaction" db:"-"`
 	Tags                 TagSlice      `json:"tags" db:"tags"`
+	FoodInsights         *FoodInsights `json:"food_insights" db:"food_insights"`
+}
+
+type FoodInsights struct {
+	Calories           int      `json:"calories" db:"calories"`
+	Proteins           int      `json:"proteins" db:"proteins"`
+	Fats               int      `json:"fats" db:"fats"`
+	Carbohydrates      int      `json:"carbohydrates" db:"carbohydrates"`
+	DietaryInformation []string `json:"dietary_information" db:"dietary_information"`
+}
+
+func (fi *FoodInsights) Scan(src interface{}) error {
+	var source []byte
+	switch src := src.(type) {
+	case []byte:
+		source = src
+	case string:
+		source = []byte(src)
+	case nil:
+		return nil
+	default:
+		return fmt.Errorf("unsupported type: %T", src)
+	}
+
+	if len(source) == 0 {
+		source = []byte("{}")
+	}
+
+	if err := json.Unmarshal(source, fi); err != nil {
+		return fmt.Errorf("error unmarshalling FoodInsights JSON: %w", err)
+	}
+
+	return nil
+}
+
+func (fi FoodInsights) Value() (driver.Value, error) {
+	return json.Marshal(fi)
 }
 
 type ArrayString []string
+
+type Ingredient struct {
+	Name   string  `json:"name"`
+	Amount float64 `json:"amount"`
+}
+
+type Ingredients []Ingredient
+
+func (i *Ingredients) Scan(src interface{}) error {
+	var source []byte
+	switch src := src.(type) {
+	case []byte:
+		source = src
+	case string:
+		source = []byte(src)
+	case nil:
+		return nil
+	default:
+		return fmt.Errorf("unsupported type: %T", src)
+	}
+
+	if len(source) == 0 {
+		source = []byte("[]")
+	}
+
+	if err := json.Unmarshal(source, i); err != nil {
+		return fmt.Errorf("error unmarshalling Ingredients JSON: %w", err)
+	}
+
+	return nil
+}
+
+func (i Ingredients) Value() (driver.Value, error) {
+	if len(i) == 0 {
+		return nil, nil
+	}
+
+	return json.Marshal(i)
+}
 
 func (as *ArrayString) Scan(src interface{}) error {
 	switch src := src.(type) {
@@ -146,6 +222,7 @@ func (s Storage) GetPostByID(uid, id int64) (*Post, error) {
 			   p.suggested_ingredients,
 			   p.suggested_tags,
 			   p.is_spam,
+			   p.food_insights,
 			   p.location_id,
 			   json_object('id', u.id, 'last_name', u.last_name, 'first_name', u.first_name, 'avatar_url', u.avatar_url, 'title',
 											   u.title, 'username', u.username) AS user,
@@ -178,6 +255,7 @@ func (s Storage) GetPostByID(uid, id int64) (*Post, error) {
 		&post.SuggestedIngredients,
 		&post.SuggestedTags,
 		&post.IsSpam,
+		&post.FoodInsights,
 		&post.LocationID,
 		&post.User,
 		&post.Reactions.Smile,
@@ -243,6 +321,7 @@ func (s Storage) ListPosts(uid int64) ([]Post, error) {
 			   p.suggested_ingredients,
 			   p.suggested_tags,
 			   p.is_spam,
+			   p.food_insights,
 			   p.location_id,
 			   json_object('id', u.id, 'last_name', u.last_name, 'first_name', u.first_name, 'avatar_url', u.avatar_url,
 						   'title',
@@ -281,6 +360,7 @@ func (s Storage) ListPosts(uid int64) ([]Post, error) {
 			&p.SuggestedIngredients,
 			&p.SuggestedTags,
 			&p.IsSpam,
+			&p.FoodInsights,
 			&p.LocationID,
 			&p.User,
 			&p.Tags,
@@ -427,6 +507,21 @@ func (s Storage) UpdatePostSuggestions(uid, postID int64, post Post) (*Post, err
 	return s.GetPostByID(uid, postID)
 }
 
+func (s Storage) UpdatePostFoodInsights(uid, postID int64, insights FoodInsights) (*Post, error) {
+	updateQuery := `
+		UPDATE posts
+		SET food_insights = ?
+		WHERE id = ? AND user_id = ?
+	`
+
+	_, err := s.db.Exec(updateQuery, insights, postID, uid)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.GetPostByID(uid, postID)
+}
+
 func (s Storage) UpdatePost(uid, postID int64, post Post, tags []int) (*Post, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -462,7 +557,7 @@ func (s Storage) UpdatePost(uid, postID int64, post Post, tags []int) (*Post, er
         WHERE id = ? AND user_id = ?
     `
 
-	_, err = tx.Exec(updateQuery, post.Text, post.PhotoURL, post.SuggestedDishName, post.SuggestedIngredients, post.SuggestedTags, post.IsSpam, locationID, postID, uid)
+	_, err = tx.Exec(updateQuery, post.Text, post.PhotoURL, locationID, postID, uid)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
