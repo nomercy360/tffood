@@ -5,10 +5,9 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
-    "build": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide && vite build",
+    "build": "vite build",
     "serve": "vite preview",
-    "generate": "kubb generate --config kubb.config.ts",
-    "postinstall": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide"
+    "generate": "kubb generate --config kubb.config.ts"
   },
   "license": "MIT",
   "devDependencies": {
