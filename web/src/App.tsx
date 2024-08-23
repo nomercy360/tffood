@@ -23,10 +23,10 @@ function transformStartParam(startParam?: string): string | null {
 	if (!startParam) return null
 
 	// Check if the parameter starts with "redirect-to-"
-	if (startParam.startsWith('t-')) {
-		const path = startParam.slice('t-'.length)
+	if (startParam.startsWith('p')) {
+		const path = startParam.slice('p'.length)
 
-		return '/' + path.replace(/-/g, '/')
+		return '/posts/' + path
 	} else {
 		return null
 	}

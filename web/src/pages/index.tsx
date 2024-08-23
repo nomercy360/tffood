@@ -2,16 +2,10 @@ import { For, onCleanup, onMount, Show } from 'solid-js'
 import { cn, timeSince } from '~/lib/utils'
 import { useMainButton } from '~/lib/useMainButton'
 import { useNavigate } from '@solidjs/router'
-import {
-	fetchAddPostReaction,
-	fetchPosts,
-	fetchRemovePostReaction,
-} from '~/lib/api'
-import { createMutation, createQuery } from '@tanstack/solid-query'
-import { queryClient } from '~/App'
+import { fetchPosts } from '~/lib/api'
+import { createQuery } from '@tanstack/solid-query'
 import { Link } from '~/components/link'
 import { IconInfo, IconShare } from '~/components/icons'
-import { a } from 'vite/dist/node/types.d-aGj9QkWt'
 
 export type Post = {
 	id: number
@@ -82,7 +76,7 @@ export default function HomePage() {
 		const url =
 			'https://t.me/share/url?' +
 			new URLSearchParams({
-				url: 'https://t.me/peatcher_testing_bot/app?startapp=p' + postID,
+				url: 'https://t.me/eatzfood_bot/app?startapp=p' + postID,
 			}).toString() +
 			'&text=Check out this post'
 
