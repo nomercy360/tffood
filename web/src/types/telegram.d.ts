@@ -4,176 +4,188 @@ interface CloudStorage {
 		key: string,
 		value: string,
 		callback?: (error: Error | null, success: boolean) => void,
-	): CloudStorage;
+	): CloudStorage
 
 	getItem(
 		key: string,
 		callback: (error: Error | null, value: string) => void,
-	): string;
+	): string
 
 	getItems(
 		keys: string[],
 		callback: (error: Error | null, values: string[]) => void,
-	): void;
+	): void
 
 	removeItem(
 		key: string,
 		callback?: (error: Error | null, success: boolean) => void,
-	): CloudStorage;
+	): CloudStorage
 
 	removeItems(
 		keys: string[],
 		callback?: (error: Error | null, success: boolean) => void,
-	): CloudStorage;
+	): CloudStorage
 
-	getKeys(callback: (error: Error | null, keys: string[]) => void): void;
+	getKeys(callback: (error: Error | null, keys: string[]) => void): void
 }
 
 // Telegram Interface Definitions
 interface Telegram {
-	WebView: WebView;
-	Utils: Utils;
-	WebApp: WebApp;
+	WebView: WebView
+	Utils: Utils
+	WebApp: WebApp
 }
 
-interface Utils {
-}
+interface Utils {}
 
 interface HapticFeedback {
-	notificationOccurred(type: 'error' | 'success' | 'warning'): void;
-	impactOccurred(style: 'light' | 'medium' | 'heavy' | 'soft' | 'rigid'): void;
-	selectionOccurred(): void;
+	notificationOccurred(type: 'error' | 'success' | 'warning'): void
+	impactOccurred(style: 'light' | 'medium' | 'heavy' | 'soft' | 'rigid'): void
+	selectionOccurred(): void
 }
 
 interface WebApp {
-	initData: string;
-	initDataUnsafe: InitDataUnsafe;
-	version: string;
-	platform: string;
-	colorScheme: string;
-	themeParams: ThemeParams;
-	isExpanded: boolean;
-	viewportHeight: number;
-	viewportStableHeight: number;
-	isClosingConfirmationEnabled: boolean;
-	headerColor: string;
-	backgroundColor: string;
-	BackButton: BackButton;
-	MainButton: MainButton;
-	HapticFeedback: HapticFeedback;
-	CloudStorage: CloudStorage;
+	initData: string
+	initDataUnsafe: InitDataUnsafe
+	version: string
+	platform: string
+	colorScheme: string
+	themeParams: ThemeParams
+	isExpanded: boolean
+	viewportHeight: number
+	viewportStableHeight: number
+	isClosingConfirmationEnabled: boolean
+	headerColor: string
+	backgroundColor: string
+	BackButton: BackButton
+	MainButton: MainButton
+	HapticFeedback: HapticFeedback
+	CloudStorage: CloudStorage
+	SettingsButton: SettingsButton
 
-	openTelegramLink(url: string): void;
+	openTelegramLink(url: string): void
 
-	showAlert(message: string, callback?: () => void): void;
+	showAlert(message: string, callback?: () => void): void
 
-	showConfirm(message: string, callback: (ok: boolean) => void): void;
+	showConfirm(message: string, callback: (ok: boolean) => void): void
 
-	expand(): void;
+	expand(): void
 
-	ready(): void;
+	ready(): void
 
-	close(): void;
+	close(): void
 
-	onEvent(event: string, callback: (params: any) => void): void;
+	onEvent(event: string, callback: (params: any) => void): void
 
-	offEvent(event: string, callback: () => void): void;
+	offEvent(event: string, callback: () => void): void
 
-	openLink(url: string): void;
+	openLink(url: string): void
 
-	requestWriteAccess([callback]?: any): void;
+	requestWriteAccess([callback]?: any): void
 
-	sendData(data: any): void;
+	sendData(data: any): void
+}
+
+interface SettingsButton {
+	isVisible: boolean
+
+	onClick(callback: () => void): void
+
+	offClick(callback: () => void): void
+
+	show(): void
+
+	hide(): void
 }
 
 interface BackButton {
-	isVisible: boolean;
+	isVisible: boolean
 
-	onClick(callback: () => void): void;
+	onClick(callback: () => void): void
 
-	offClick(callback: () => void): void;
+	offClick(callback: () => void): void
 
-	show(): void;
+	show(): void
 
-	hide(): void;
+	hide(): void
 
-	setParams(params: { text_color?: string }): void;
+	setParams(params: { text_color?: string }): void
 }
 
 export interface MainButton {
-	onClick: (callback: () => void) => MainButton;
-	text: string;
-	color: string;
-	offClick: (callback: () => void) => MainButton;
-	textColor: string;
-	isVisible: boolean;
-	isProgressVisible: boolean;
-	isActive: boolean;
+	onClick: (callback: () => void) => MainButton
+	text: string
+	color: string
+	offClick: (callback: () => void) => MainButton
+	textColor: string
+	isVisible: boolean
+	isProgressVisible: boolean
+	isActive: boolean
 
 	setParams(params: {
-		text_color?: string;
-		color?: string;
-		text?: string;
-		is_active?: boolean;
-		is_visible?: boolean;
-	}): MainButton;
+		text_color?: string
+		color?: string
+		text?: string
+		is_active?: boolean
+		is_visible?: boolean
+	}): MainButton
 
-	showProgress(leaveActive: boolean): void;
+	showProgress(leaveActive: boolean): void
 
-	hideProgress(): void;
+	hideProgress(): void
 
-	disable(): void;
+	disable(): void
 
-	setText(nextText: string): void;
+	setText(nextText: string): void
 
-	show(): void;
+	show(): void
 
-	enable(): void;
+	enable(): void
 }
 
 interface InitDataUnsafe {
-	query_id: string;
-	user: User;
-	auth_date: string;
-	hash: string;
-	start_param?: string;
+	query_id: string
+	user: User
+	auth_date: string
+	hash: string
+	start_param?: string
 }
 
 interface User {
-	id: number;
-	first_name: string;
-	last_name: string;
-	username: string;
-	language_code: string;
-	is_bot: boolean;
-	is_premium: boolean;
-	added_to_attachment_menu: boolean;
-	allows_write_to_pm: boolean;
+	id: number
+	first_name: string
+	last_name: string
+	username: string
+	language_code: string
+	is_bot: boolean
+	is_premium: boolean
+	added_to_attachment_menu: boolean
+	allows_write_to_pm: boolean
 }
 
 interface ThemeParams {
-	bg_color: string;
-	text_color: string;
-	hint_color: string;
-	link_color: string;
-	button_color: string;
-	button_text_color: string;
-	secondary_bg_color: string;
-	header_bg_color: string;
-	accent_text_color: string;
-	section_bg_color: string;
-	section_header_text_color: string;
-	subtitle_text_color: string;
-	destructive_text_color: string;
+	bg_color: string
+	text_color: string
+	hint_color: string
+	link_color: string
+	button_color: string
+	button_text_color: string
+	secondary_bg_color: string
+	header_bg_color: string
+	accent_text_color: string
+	section_bg_color: string
+	section_header_text_color: string
+	subtitle_text_color: string
+	destructive_text_color: string
 }
 
 interface WebView {
-	initParams: InitParams;
-	isIframe: boolean;
+	initParams: InitParams
+	isIframe: boolean
 }
 
 interface InitParams {
-	tgWebAppData: string;
-	tgWebAppVersion: string;
-	tgWebAppThemeParams: string;
+	tgWebAppData: string
+	tgWebAppVersion: string
+	tgWebAppThemeParams: string
 }

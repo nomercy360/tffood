@@ -92,7 +92,7 @@ export default function HomePage() {
 							<div class="rounded-lg border bg-section">
 								<UserProfileLink user={item.user} class="p-4" />
 								<img
-									src={item.photo_url}
+									src="https://via.placeholder.com/150"
 									class="aspect-[4/3] w-full object-cover"
 									alt="Thumbnail"
 								/>

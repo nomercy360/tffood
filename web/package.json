@@ -5,12 +5,14 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
-    "build": "vite build",
+    "build": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide && vite build",
     "serve": "vite preview",
-    "generate": "kubb generate --config kubb.config.ts"
+    "generate": "kubb generate --config kubb.config.ts",
+    "postinstall": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide"
   },
   "license": "MIT",
   "devDependencies": {
+    "@inlang/paraglide-js": "1.11.2",
     "@typescript-eslint/eslint-plugin": "^7.8.0",
     "@typescript-eslint/parser": "^7.8.0",
     "autoprefixer": "^10.4.19",
@@ -27,6 +29,7 @@
   "dependencies": {
     "@solidjs/router": "^0.13.5",
     "@tanstack/solid-query": "^5.45.0",
+    "chart.js": "^4.4.4",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "solid-js": "^1.8.17",

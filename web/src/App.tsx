@@ -59,6 +59,10 @@ export default function App(props: any) {
 
 			window.Telegram.WebApp.ready()
 			window.Telegram.WebApp.expand()
+			window.Telegram.WebApp.SettingsButton.show()
+			window.Telegram.WebApp.SettingsButton.onClick(() => {
+				navigate('/settings')
+			})
 
 			setIsAuthenticated(true)
 			setIsLoading(false)
