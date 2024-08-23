@@ -99,7 +99,7 @@ func (h Handler) HandleWebhook(c echo.Context) error {
 				log.Printf("Failed to process image from telegram. User: %d, Error: %v", user.ID, err)
 				msg.Text = "Failed to process the image. Please try again."
 			} else {
-				msg.Text = "Image uploaded successfully"
+				msg.Text = "Getting insights from the image. Please wait."
 			}
 
 		} else if update.Message.Document != nil {
@@ -147,14 +147,24 @@ func (h Handler) onImageMessage(uid int64, update tgModels.Update) error {
 
 	// run AI model in the background
 	go func() {
-		_, err := h.runAISuggestions(uid, res.ID)
+		postWithSuggestions, err := h.runAISuggestions(uid, res.ID)
 		if err != nil {
 			log.Printf("Failed to run AI suggestions: %v", err)
 		}
 
+		insights := postWithSuggestions.FoodInsights
+		var msgText string
+
+		if insights != nil && postWithSuggestions.SuggestedDishName != nil {
+			msgText = fmt.Sprintf("*%s*:\n- Calories: %d kcal\n- Proteins: %d g\n- Fats: %d g\n- Carbohydrates: %d g\nOpen the app to see more details.", *postWithSuggestions.SuggestedDishName, insights.Calories, insights.Proteins, insights.Fats, insights.Carbohydrates)
+		} else {
+			msgText = "Your post has been successfully processed. Open the app to see the results."
+		}
+
 		msg := telegram.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
-			Text:   "Your post has been successfully processed. Open the app to see the results.",
+			ChatID:    update.Message.Chat.ID,
+			Text:      msgText,
+			ParseMode: "Markdown",
 		}
 
 		if _, err := h.tg.SendMessage(context.Background(), &msg); err != nil {

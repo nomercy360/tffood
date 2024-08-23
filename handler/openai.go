@@ -12,7 +12,51 @@ import (
 	"time"
 )
 
-func getRequestBody(imageUrl string, caption *string) string {
+type LanguageContent struct {
+	AnalyzePrompt               string
+	AnalyzeDescription          string
+	SpamDescription             string
+	DishDescription             string
+	TagsDescription             string
+	IngredientsDescription      string
+	NutritionalPrompt           string
+	NutritionalDescription      string
+	IngredientNameDescription   string
+	IngredientAmountDescription string
+}
+
+func getLanguageContent(language string) LanguageContent {
+	if language == "ru" {
+		return LanguageContent{
+			AnalyzePrompt:               "Какое блюдо или продукт изображены на этой картинке?",
+			AnalyzeDescription:          "Анализ изображения с едой для определения, является ли оно спамом, идентификации блюда, маркировки изображения по содержанию и перечисления ингредиентов вместе с их приблизительным количеством.",
+			SpamDescription:             "Указывает, считается ли изображение спамом или не относящимся к задаче",
+			DishDescription:             "Определенное основное блюдо на изображении.",
+			TagsDescription:             "Теги, описывающие блюдо на фото с учетом диетических предпочтений, ингредиентов или вкусовых профилей.",
+			IngredientsDescription:      "Перечислите все видимые ингредиенты и оцените приблизительное количество каждого в граммах, используя стандартные объекты на фото, такие как столовые приборы или посуда для масштабирования.",
+			NutritionalPrompt:           "Анализируем информацию о питательности продукта и предоставляем данные о калориях, макронутриентах и диетической информации.",
+			NutritionalDescription:      "Форматирует ответ анализа питательности в структурированный, читаемый формат для отображения или дальнейшей обработки. Эта функция организует полученные данные анализа питательности в разделы калорийности, макро- и микронутриентов, а также пригодности блюда для различных диет.",
+			IngredientNameDescription:   "Название ингредиента",
+			IngredientAmountDescription: "Приблизительное количество ингредиента в граммах",
+		}
+	}
+	return LanguageContent{
+		AnalyzePrompt:               "What dish or food is displayed on this picture?",
+		AnalyzeDescription:          "Analyzes an image of food to determine if it's spam, identify the dish, tag the image based on its contents, and list the ingredients along with their approximate amounts.",
+		SpamDescription:             "Indicates whether the image is considered spam or irrelevant to the task",
+		DishDescription:             "The identified main dish in the image.",
+		TagsDescription:             "Tags that describe the dish displayed in the photo based on dietary preferences, ingredients, or taste profiles.",
+		IngredientsDescription:      "List all visible ingredients and estimate the approximate amount of each in grams, using standard objects in the photo such as utensils or dishware for scale.",
+		NutritionalPrompt:           "Analyzing the nutritional information of the food and provide insights on the calories, macronutrients, and dietary information.",
+		NutritionalDescription:      "Formats the nutritional analysis response into a structured, readable format for display or further processing. This function takes the raw data from a nutritional analysis and organizes it into sections for calories, macronutrients, micronutrients, and dietary suitability.",
+		IngredientNameDescription:   "Name of the ingredient",
+		IngredientAmountDescription: "Approximate amount of the ingredient in grams",
+	}
+}
+
+func getRequestBody(lang, imageUrl string, caption *string) string {
+	content := getLanguageContent(lang)
+
 	var captionText string
 	if caption != nil {
 		captionText = fmt.Sprintf(`{
@@ -30,7 +74,7 @@ func getRequestBody(imageUrl string, caption *string) string {
             "content": [
                 {
                     "type": "text",
-                    "text": "What dish or food is displayed on this picture?"
+                    "text": "%s"
                 }
             ]
         },
@@ -51,36 +95,34 @@ func getRequestBody(imageUrl string, caption *string) string {
         "type": "json_schema",
         "json_schema": {
             "name": "analyze_food_image",
-            "description": "Analyzes an image of food to determine if it's spam, identify the dish, tag the image based on its contents, and list the ingredients along with their approximate amounts.",
+            "description": "%s",
             "strict": true,
             "schema": {
                 "type": "object",
                 "properties": {
                     "spam": {
                         "type": "boolean",
-                        "description": "Indicates whether the image is considered spam or irrelevant to the task"
+                        "description": "%s"
                     },
                     "dish": {
                         "type": "string",
-                        "description": "The identified main dish in the image."
+                        "description": "%s"
                     },
                     "tags": {
                         "type": "array",
                         "items": {
                             "type": "string",
                             "enum": [
-                                "vegetarian",
-                                "vegan",
-                                "gluten-free",
-                                "meat",
-                                "seafood",
-                                "dessert",
-                                "spicy",
-                                "sweet",
-                                "salty"
+                                "веган",
+                                "без глютена",
+								"без лактозы",
+								"кето",
+								"палео",
+								"вегетарианец",
+								"белковая диета"
                             ]
                         },
-                        "description": "Tags that describe the dish displayed in the photo based on dietary preferences, ingredients, or taste profiles."
+                        "description": "%s"
                     },
                     "ingredients": {
                         "type": "array",
@@ -89,17 +131,17 @@ func getRequestBody(imageUrl string, caption *string) string {
                             "properties": {
                                 "name": {
                                     "type": "string",
-                                    "description": "Name of the ingredient"
+                                    "description": "%s"
                                 },
                                 "amount": {
                                     "type": "number",
-                                    "description": "Approximate amount of the ingredient in grams"
+                                    "description": "%s"
                                 }
                             },
                             "additionalProperties": false,
                             "required": ["name", "amount"]
                         },
-                        "description": "List all visible ingredients and estimate the approximate amount of each in grams, using standard objects in the photo such as utensils or dishware for scale."
+                        "description": "%s"
                     }
                 },
                  "additionalProperties": false,
@@ -117,10 +159,12 @@ func getRequestBody(imageUrl string, caption *string) string {
     "top_p": 1,
     "frequency_penalty": 0,
     "presence_penalty": 0
-}`, captionText, imageUrl)
+}`, content.AnalyzePrompt, captionText, imageUrl, content.AnalyzeDescription, content.SpamDescription, content.DishDescription, content.TagsDescription, content.IngredientNameDescription, content.IngredientAmountDescription, content.IngredientsDescription)
 }
 
-func nutritionRequestBody(foodInfo string) string {
+func nutritionRequestBody(lang, foodInfo string) string {
+	content := getLanguageContent(lang)
+
 	return fmt.Sprintf(`{
     "model": "gpt-4o-2024-08-06",
     "messages": [
@@ -129,7 +173,7 @@ func nutritionRequestBody(foodInfo string) string {
             "content": [
                 {
                     "type": "text",
-                    "text": "What dish or food is displayed on this picture?"
+                    "text": "%s"
                 }
             ]
         },
@@ -138,7 +182,7 @@ func nutritionRequestBody(foodInfo string) string {
             "content": [
                 {
                     "type": "text",
-                    "text": "Analyzing the nutritional information of the food and provide insights on the calories, macronutrients, and dietary information.\n\nFood: %s"
+                    "text": "%s: %s"
                 }
             ]
         }
@@ -148,7 +192,7 @@ func nutritionRequestBody(foodInfo string) string {
             "type": "json_schema",
             "json_schema": {
                 "name": "formatNutritionalResponse",
-                "description": "Formats the nutritional analysis response into a structured, readable format for display or further processing. This function takes the raw data from a nutritional analysis and organizes it into sections for calories, macronutrients, micronutrients, and dietary suitability.",
+                "description": "%s",
                 "strict": true,
                 "schema": {
                     "type": "object",
@@ -201,7 +245,7 @@ func nutritionRequestBody(foodInfo string) string {
     "top_p": 1,
     "frequency_penalty": 0,
     "presence_penalty": 0
-}`, foodInfo)
+}`, content.NutritionalPrompt, content.NutritionalPrompt, foodInfo, content.NutritionalDescription)
 }
 
 type OpenAIResponse struct {
@@ -307,7 +351,7 @@ type NutritionResponse struct {
 func GetNutritionInfo(foodInfo string, openAIKey string) (*NutritionResponse, error) {
 	log.Printf("Getting nutrition info for %s\n", foodInfo)
 
-	reqBody := nutritionRequestBody(foodInfo)
+	reqBody := nutritionRequestBody("ru", foodInfo)
 
 	resp, err := sendOpenAIRequest(reqBody, openAIKey)
 
@@ -377,7 +421,7 @@ func checkImageAvailable(imgUrl string) error {
 func GetFoodPictureInfo(imgUrl string, caption *string, openAIKey string) (*ImageRecognitionResponse, error) {
 	log.Printf("Getting food picture info for %s\n", imgUrl)
 
-	reqBody := getRequestBody(imgUrl, caption)
+	reqBody := getRequestBody("ru", imgUrl, caption)
 
 	if err := checkImageAvailable(imgUrl); err != nil {
 		return nil, err
