@@ -33,7 +33,7 @@ func getLanguageContent(language string) LanguageContent {
 			SpamDescription:             "Указывает, считается ли изображение спамом или не относящимся к задаче",
 			DishDescription:             "Определенное основное блюдо на изображении.",
 			TagsDescription:             "Теги, описывающие блюдо на фото с учетом диетических предпочтений, ингредиентов или вкусовых профилей.",
-			IngredientsDescription:      "Перечислите все видимые ингредиенты и оцените приблизительное количество каждого в граммах, используя стандартные объекты на фото, такие как столовые приборы или посуда для масштабирования.",
+			IngredientsDescription:      "Перечисли все видимые ингредиенты и оцените приблизительное количество каждого в граммах, используя стандартные объекты на фото, такие как столовые приборы или посуда для масштабирования.",
 			NutritionalPrompt:           "Анализируем информацию о питательности продукта и предоставляем данные о калориях, макронутриентах и диетической информации.",
 			NutritionalDescription:      "Форматирует ответ анализа питательности в структурированный, читаемый формат для отображения или дальнейшей обработки. Эта функция организует полученные данные анализа питательности в разделы калорийности, макро- и микронутриентов, а также пригодности блюда для различных диет.",
 			IngredientNameDescription:   "Название ингредиента",
@@ -348,10 +348,10 @@ type NutritionResponse struct {
 	DietaryInfo []string `json:"dietaryInformation"`
 }
 
-func GetNutritionInfo(foodInfo string, openAIKey string) (*NutritionResponse, error) {
+func getNutritionInfo(lang, foodInfo string, openAIKey string) (*NutritionResponse, error) {
 	log.Printf("Getting nutrition info for %s\n", foodInfo)
 
-	reqBody := nutritionRequestBody("ru", foodInfo)
+	reqBody := nutritionRequestBody(lang, foodInfo)
 
 	resp, err := sendOpenAIRequest(reqBody, openAIKey)
 
@@ -418,10 +418,10 @@ func checkImageAvailable(imgUrl string) error {
 	return fmt.Errorf("image not available: %s", imgUrl)
 }
 
-func GetFoodPictureInfo(imgUrl string, caption *string, openAIKey string) (*ImageRecognitionResponse, error) {
+func getFoodPictureInfo(lang, imgUrl string, caption *string, openAIKey string) (*ImageRecognitionResponse, error) {
 	log.Printf("Getting food picture info for %s\n", imgUrl)
 
-	reqBody := getRequestBody("ru", imgUrl, caption)
+	reqBody := getRequestBody(lang, imgUrl, caption)
 
 	if err := checkImageAvailable(imgUrl); err != nil {
 		return nil, err

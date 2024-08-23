@@ -41,7 +41,7 @@ export default function UserProfilePage(props: any) {
 					<PostInsights insights={query.data!.food_insights} />
 					<UserProfileLink
 						user={query.data!.user}
-						class={'mt-3 rounded-lg border p-2'}
+						class={'mt-3 rounded-lg bg-background p-2'}
 					/>
 				</div>
 			</Show>
@@ -55,7 +55,7 @@ function Loading() {
 
 function PostInsights(props: { insights: Post['food_insights'] }) {
 	return (
-		<div class="mt-4 flex flex-col items-start justify-start gap-2 rounded-lg border p-2">
+		<div class="mt-4 flex flex-col items-start justify-start gap-2 rounded-lg bg-background p-2">
 			<div class="text-sm">
 				<strong>Calories:</strong> {props.insights.calories} kcal
 			</div>

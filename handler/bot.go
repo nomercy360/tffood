@@ -19,6 +19,17 @@ import (
 	"strings"
 )
 
+var messages = map[string]map[string]string{
+	"en": {
+		"welcome":    "Welcome!\n*EatZ Food* is a logging app that helps you track your meals and get insights about your nutrition. Send me a photo of your meal to get started!",
+		"openWebApp": "You can open the web app by tapping the button below.",
+	},
+	"ru": {
+		"welcome":    "Добро пожаловать!\n*EatZ Food* - это приложение для отслеживания питания, которое поможет вам отслеживать приемы пищи и получать информацию о вашем питании. Отправьте мне фото вашего блюда, чтобы начать!",
+		"openWebApp": "Вы можете открыть веб-приложение, нажав на кнопку ниже.",
+	},
+}
+
 func (h Handler) HandleWebhook(c echo.Context) error {
 	var update tgModels.Update
 	if err := json.NewDecoder(c.Request().Body).Decode(&update); err != nil {
@@ -86,7 +97,12 @@ func (h Handler) HandleWebhook(c echo.Context) error {
 	} else if err != nil {
 		log.Printf("Failed to get user: %v", err)
 		return c.NoContent(http.StatusOK)
-	} else {
+	} else if user != nil {
+		lang := "en"
+		if user.LanguageCode != nil && *user.LanguageCode == "ru" {
+			lang = "ru"
+		}
+
 		log.Printf("User %d already exists, sending message", user.ChatID)
 
 		msg := &telegram.SendMessageParams{
@@ -95,7 +111,7 @@ func (h Handler) HandleWebhook(c echo.Context) error {
 		}
 
 		if update.Message.Photo != nil && len(update.Message.Photo) > 0 {
-			if err := h.onImageMessage(user.ID, update); err != nil {
+			if err := h.onImageMessage(lang, user.ID, update); err != nil {
 				log.Printf("Failed to process image from telegram. User: %d, Error: %v", user.ID, err)
 				msg.Text = "Failed to process the image. Please try again."
 			} else {
@@ -118,7 +134,7 @@ func (h Handler) HandleWebhook(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func (h Handler) onImageMessage(uid int64, update tgModels.Update) error {
+func (h Handler) onImageMessage(lang string, uid int64, update tgModels.Update) error {
 	// find the most quality photo
 	photo := update.Message.Photo[len(update.Message.Photo)-1]
 
@@ -147,7 +163,7 @@ func (h Handler) onImageMessage(uid int64, update tgModels.Update) error {
 
 	// run AI model in the background
 	go func() {
-		postWithSuggestions, err := h.runAISuggestions(uid, res.ID)
+		postWithSuggestions, err := h.runAISuggestions(lang, uid, res.ID)
 		if err != nil {
 			log.Printf("Failed to run AI suggestions: %v", err)
 		}

@@ -69,8 +69,19 @@ func (h Handler) CreatePost(c echo.Context) error {
 	}
 
 	go func() {
-		_, err := h.runAISuggestions(uid, res.ID)
+		user, err := h.st.GetUserByID(db.UserQuery{ID: uid})
 		if err != nil {
+			log.Printf("Failed to get user: %v", err)
+			return
+		}
+
+		lang := "en"
+
+		if user.LanguageCode != nil && *user.LanguageCode == "ru" {
+			lang = "ru"
+		}
+
+		if _, err := h.runAISuggestions(lang, uid, res.ID); err != nil {
 			log.Printf("Failed to run AI suggestions: %v", err)
 		}
 	}()
@@ -78,8 +89,8 @@ func (h Handler) CreatePost(c echo.Context) error {
 	return c.JSON(http.StatusCreated, res)
 }
 
-func GetAIUpdatedPost(post *db.Post, openAIKey string) (*db.Post, error) {
-	info, err := GetFoodPictureInfo(post.PhotoURL, post.Text, openAIKey)
+func getAIUpdatedPost(lang string, post *db.Post, openAIKey string) (*db.Post, error) {
+	info, err := getFoodPictureInfo(lang, post.PhotoURL, post.Text, openAIKey)
 	if err != nil {
 		return nil, err
 	}
@@ -92,14 +103,14 @@ func GetAIUpdatedPost(post *db.Post, openAIKey string) (*db.Post, error) {
 	return post, nil
 }
 
-func (h Handler) runAISuggestions(uid, postID int64) (*db.Post, error) {
+func (h Handler) runAISuggestions(lang string, uid, postID int64) (*db.Post, error) {
 	post, err := h.st.GetPostByID(uid, postID)
 
 	if err != nil {
 		return nil, err
 	}
 
-	post, err = GetAIUpdatedPost(post, h.config.OpenAIKey)
+	post, err = getAIUpdatedPost(lang, post, h.config.OpenAIKey)
 
 	if err != nil {
 		return nil, err
@@ -111,7 +122,7 @@ func (h Handler) runAISuggestions(uid, postID int64) (*db.Post, error) {
 		return nil, err
 	}
 
-	insights, err := GetNutritionInfo(formatIngredients(post.SuggestedIngredients), h.config.OpenAIKey)
+	insights, err := getNutritionInfo(lang, formatIngredients(post.SuggestedIngredients), h.config.OpenAIKey)
 
 	if err != nil {
 		return nil, err
