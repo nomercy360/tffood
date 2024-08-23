@@ -76,7 +76,7 @@ func (h Handler) CreatePost(c echo.Context) error {
 }
 
 func GetAIUpdatedPost(post *db.Post, openAIKey string) (*db.Post, error) {
-	info, err := GetFoodPictureInfo(post.PhotoURL, openAIKey)
+	info, err := GetFoodPictureInfo(post.PhotoURL, post.Text, openAIKey)
 	if err != nil {
 		return nil, err
 	}

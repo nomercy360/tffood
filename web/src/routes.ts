@@ -25,6 +25,10 @@ export const routes: RouteDefinition[] = [
 		path: '/post',
 	},
 	{
+		component: lazy(() => import('~/pages/posts/id')),
+		path: '/posts/:id',
+	},
+	{
 		component: lazy(() => import('~/pages/users/handle')),
 		path: '/users/:username',
 	},

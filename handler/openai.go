@@ -12,7 +12,15 @@ import (
 	"time"
 )
 
-func getRequestBody(imageUrl string) string {
+func getRequestBody(imageUrl string, caption *string) string {
+	var captionText string
+	if caption != nil {
+		captionText = fmt.Sprintf(`{
+          "type": "text",
+          "text": "%s"
+        },`, *caption)
+	}
+
 	// replace newlines with spaces
 	return fmt.Sprintf(`{
     "model": "gpt-4o-2024-08-06",
@@ -29,6 +37,7 @@ func getRequestBody(imageUrl string) string {
         {
             "role": "user",
             "content": [
+				%s
                 {
                     "type": "image_url",
                     "image_url": {
@@ -108,7 +117,7 @@ func getRequestBody(imageUrl string) string {
     "top_p": 1,
     "frequency_penalty": 0,
     "presence_penalty": 0
-}`, imageUrl)
+}`, captionText, imageUrl)
 }
 
 func nutritionRequestBody(foodInfo string) string {
@@ -365,10 +374,10 @@ func checkImageAvailable(imgUrl string) error {
 	return fmt.Errorf("image not available: %s", imgUrl)
 }
 
-func GetFoodPictureInfo(imgUrl string, openAIKey string) (*ImageRecognitionResponse, error) {
+func GetFoodPictureInfo(imgUrl string, caption *string, openAIKey string) (*ImageRecognitionResponse, error) {
 	log.Printf("Getting food picture info for %s\n", imgUrl)
 
-	reqBody := getRequestBody(imgUrl)
+	reqBody := getRequestBody(imgUrl, caption)
 
 	if err := checkImageAvailable(imgUrl); err != nil {
 		return nil, err

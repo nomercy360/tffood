@@ -1,5 +1,4 @@
-import { createSignal, For, onCleanup, onMount, Show } from 'solid-js'
-import { IconUpset, IconSmile, IconNeutral, IconMap, IconChevronDown, IconChevronUp } from '~/components/icons'
+import { For, onCleanup, onMount, Show } from 'solid-js'
 import { cn, timeSince } from '~/lib/utils'
 import { useMainButton } from '~/lib/useMainButton'
 import { useNavigate } from '@solidjs/router'
@@ -11,8 +10,10 @@ import {
 import { createMutation, createQuery } from '@tanstack/solid-query'
 import { queryClient } from '~/App'
 import { Link } from '~/components/link'
+import { IconInfo, IconShare } from '~/components/icons'
+import { a } from 'vite/dist/node/types.d-aGj9QkWt'
 
-type Post = {
+export type Post = {
 	id: number
 	user_id: number
 	text: string
@@ -47,10 +48,10 @@ type Post = {
 		avatar_url: string
 	}
 	food_insights: {
-		calories: number,
-		proteins: number,
-		fats: number,
-		carbohydrates: number,
+		calories: number
+		proteins: number
+		fats: number
+		carbohydrates: number
 		dietary_information: string[]
 	}
 }
@@ -59,58 +60,6 @@ export default function HomePage() {
 	const query = createQuery(() => ({
 		queryKey: ['posts'],
 		queryFn: () => fetchPosts(),
-	}))
-
-	const handleMutate = async (id: number, type: string) => {
-		await queryClient.cancelQueries({ queryKey: ['posts'] })
-
-		queryClient.setQueryData(['posts'], (old: Post[]) =>
-			old.map((post) => {
-				if (post.id !== id) return post
-
-				const reactionsCopy = { ...post.reactions }
-
-				const isTogglingSameReaction =
-					post.user_reaction.has_reacted && post.user_reaction.type === type
-
-				if (isTogglingSameReaction) {
-					reactionsCopy[type] = Math.max(0, reactionsCopy[type] - 1)
-				} else {
-					if (post.user_reaction.has_reacted) {
-						reactionsCopy[post.user_reaction.type] = Math.max(
-							0,
-							reactionsCopy[post.user_reaction.type] - 1,
-						)
-					}
-					reactionsCopy[type] = (reactionsCopy[type] || 0) + 1
-				}
-
-				const newUserReaction = {
-					type: type,
-					has_reacted: !isTogglingSameReaction,
-				}
-
-				return {
-					...post,
-					reactions: reactionsCopy,
-					user_reaction: newUserReaction,
-				}
-			}),
-		)
-
-		window.Telegram.WebApp.HapticFeedback.impactOccurred('light')
-	}
-
-	const mutateReact = createMutation(() => ({
-		mutationFn: async ({ item, type }: { item: Post; type: string }) => {
-			if (item.user_reaction.has_reacted && item.user_reaction.type === type) {
-				await fetchRemovePostReaction(item.id)
-			} else {
-				await fetchAddPostReaction(item.id, type as any)
-			}
-		},
-		onMutate: ({ item, type }: { item: Post; type: string }) =>
-			handleMutate(item.id, type),
 	}))
 
 	const mainButton = useMainButton()
@@ -129,6 +78,17 @@ export default function HomePage() {
 		mainButton.hide()
 	})
 
+	function sharePostURl(postID: string) {
+		const url =
+			'https://t.me/share/url?' +
+			new URLSearchParams({
+				url: 'https://t.me/peatcher_testing_bot/app?startapp=p' + postID,
+			}).toString() +
+			'&text=Check out this post'
+
+		window.Telegram.WebApp.openTelegramLink(url)
+	}
+
 	return (
 		<section class="p-4">
 			<div class="grid gap-2">
@@ -136,30 +96,9 @@ export default function HomePage() {
 					<For each={query.data as Post[]}>
 						{(item) => (
 							<div class="rounded-lg border bg-section">
-								<Link
-									class="flex flex-row items-center justify-start gap-2 p-4"
-									href={`/users/${item.user.username}`}
-								>
-									<img
-										src={item.user.avatar_url}
-										class="size-8 rounded-full"
-										alt="User"
-									/>
-									<div class="flex flex-col items-start justify-start">
-										<p class="text-sm font-semibold text-hint">
-											{item.user.username}
-										</p>
-										<Show when={item.location}>
-											<div class="flex flex-row items-center justify-start gap-1.5">
-												<p class="line-clamp-1 text-xs text-hint">
-													{item.location.address}
-												</p>
-											</div>
-										</Show>
-									</div>
-								</Link>
+								<UserProfileLink user={item.user} class="p-4" />
 								<img
-									src={item.photo_url}
+									src="https://fastly.picsum.photos/id/406/640/425.jpg?hmac=ZObxV9stKlFmr6aRnYoQt46DuNvHUxwic42N7eLcooI"
 									class="aspect-[4/3] w-full object-cover"
 									alt="Thumbnail"
 								/>
@@ -167,68 +106,20 @@ export default function HomePage() {
 									<p class="text-sm text-hint">
 										{item.text || item.suggested_dish_name}
 									</p>
-									<Show when={item.suggested_ingredients?.length > 0}>
-										<p class="mt-2 text-xs text-hint">
-											Ingredients: {item.suggested_ingredients.map((i) => `${i.name} (${i.amount}g)`).join(', ')}
-										</p>
-									</Show>
-									<div class="mt-4 flex flex-row flex-wrap items-center justify-start gap-1.5">
-										<For each={item.suggested_tags}>
-											{(ingredient) => (
-												<span
-													class="flex h-6 items-center justify-center rounded-lg bg-background px-2 py-0.5 text-xs text-hint">
-													{ingredient}
-												</span>
-											)}
-										</For>
-									</div>
-									<Show when={item.food_insights}>
-										<PostInsights insights={item.food_insights} />
-									</Show>
 									<div class="mt-4 flex w-full flex-row items-center justify-between">
 										<div class="flex flex-row items-center justify-start gap-2">
 											<button
-												class={cn(
-													'flex h-8 w-12 items-center justify-start gap-1.5 rounded-lg px-1.5 text-sm',
-													item.user_reaction.has_reacted &&
-													item.user_reaction.type === 'smile' &&
-													'bg-background',
-												)}
-												onClick={() =>
-													mutateReact.mutate({ item, type: 'smile' })
-												}
+												class="flex size-8 flex-row items-center justify-center gap-1.5 rounded-lg"
+												onClick={() => sharePostURl(item.id.toString())}
 											>
-												<IconSmile class="shrink-0" />
-												{item.reactions.smile}
+												<IconShare class="size-5" />
 											</button>
-											<button
-												class={cn(
-													'flex h-8 w-12 items-center justify-start gap-1.5 rounded-lg px-1.5 text-sm',
-													item.user_reaction.has_reacted &&
-													item.user_reaction.type === 'meh' &&
-													'bg-background',
-												)}
-												onClick={() =>
-													mutateReact.mutate({ item, type: 'meh' })
-												}
+											<Link
+												class="flex size-8 flex-row items-center justify-center gap-1.5 rounded-lg"
+												href={`/posts/${item.id}`}
 											>
-												<IconNeutral class="shrink-0" />
-												{item.reactions.meh}
-											</button>
-											<button
-												class={cn(
-													'flex h-8 w-12 items-center justify-start gap-1.5 rounded-lg px-1.5 text-sm',
-													item.user_reaction.has_reacted &&
-													item.user_reaction.type === 'frown' &&
-													'bg-background',
-												)}
-												onClick={() => {
-													mutateReact.mutate({ item, type: 'frown' })
-												}}
-											>
-												<IconUpset class="shrink-0" />
-												{item.reactions.frown}
-											</button>
+												<IconInfo class="size-5" />
+											</Link>
 										</div>
 										<span class="text-xs text-hint">
 											{timeSince(item.created_at)}
@@ -255,37 +146,19 @@ function Loader() {
 	)
 }
 
-function PostInsights(props: { insights: Post['food_insights'] }) {
-	const [insightsVisible, setInsightsVisible] = createSignal(false)
-
+export function UserProfileLink(props: { class: any; user: Post['user'] }) {
 	return (
-		<div class="mt-4 flex flex-col items-start justify-start gap-1">
-			<button
-				class="mt-4 flex h-8 w-full items-center justify-start gap-1.5 text-sm text-hint"
-				onClick={() => setInsightsVisible(!insightsVisible())}
-			>
-				{insightsVisible() ? <IconChevronDown class="shrink-0" /> : <IconChevronUp class="shrink-0" />}
-				{insightsVisible() ? 'hide Insights' : 'show Insights'}
-			</button>
-			<Show when={insightsVisible()}>
-				<div class="mt-2 flex flex-col items-start justify-start gap-2 rounded-lg bg-background p-2">
-					<div class="text-sm">
-						<strong>Calories:</strong> {props.insights.calories} kcal
-					</div>
-					<div class="text-sm">
-						<strong>Proteins:</strong> {props.insights.proteins} g
-					</div>
-					<div class="text-sm">
-						<strong>Fats:</strong> {props.insights.fats} g
-					</div>
-					<div class="text-sm">
-						<strong>Carbohydrates:</strong> {props.insights.carbohydrates} g
-					</div>
-					<p class="text-sm">
-						<strong>Dietary Information:</strong> {props.insights.dietary_information.join(', ')}
-					</p>
-				</div>
-			</Show>
-		</div>
+		<Link
+			class={cn('flex flex-row items-center justify-start gap-2', props.class)}
+			href={`/users/${props.user.username}`}
+		>
+			<img src={props.user.avatar_url} class="size-8 rounded-full" alt="User" />
+			<div class="flex flex-col items-start justify-start">
+				<p class="text-sm font-semibold text-hint">@{props.user.username}</p>
+				<p class="text-main text-sm font-semibold">
+					{props.user?.first_name} {props.user?.last_name}
+				</p>
+			</div>
+		</Link>
 	)
 }
