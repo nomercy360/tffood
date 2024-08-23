@@ -13,7 +13,7 @@ export default function UserProfilePage(props: any) {
 		<div class="min-h-screen bg-secondary p-2">
 			<Show when={query.isSuccess} fallback={<Loading />}>
 				<img
-					src="https://fastly.picsum.photos/id/406/640/425.jpg?hmac=ZObxV9stKlFmr6aRnYoQt46DuNvHUxwic42N7eLcooI"
+					src={query.data?.photo_url}
 					class="aspect-[4/3] w-full rounded-lg object-cover"
 					alt="Thumbnail"
 				/>

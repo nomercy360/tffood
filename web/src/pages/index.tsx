@@ -98,7 +98,7 @@ export default function HomePage() {
 							<div class="rounded-lg border bg-section">
 								<UserProfileLink user={item.user} class="p-4" />
 								<img
-									src="https://fastly.picsum.photos/id/406/640/425.jpg?hmac=ZObxV9stKlFmr6aRnYoQt46DuNvHUxwic42N7eLcooI"
+									src={item.photo_url}
 									class="aspect-[4/3] w-full object-cover"
 									alt="Thumbnail"
 								/>
