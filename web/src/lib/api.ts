@@ -103,23 +103,6 @@ export async function fetchPresignedUrl(filename: string) {
 	return response as any
 }
 
-export async function fetchAddPostReaction(
-	id: number,
-	type: 'frown' | 'meh' | 'smile',
-) {
-	return await apiFetch({
-		endpoint: `/posts/${id}/react/${type}`,
-		method: 'POST',
-	})
-}
-
-export async function fetchRemovePostReaction(id: number) {
-	return await apiFetch({
-		endpoint: `/posts/${id}/react`,
-		method: 'DELETE',
-	})
-}
-
 export async function fetchTags() {
 	const response = await apiFetch({ endpoint: '/tags' })
 	return response as any

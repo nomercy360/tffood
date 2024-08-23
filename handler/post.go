@@ -1,12 +1,11 @@
 package handler
 
 import (
-	"errors"
 	"fmt"
 	"github.com/labstack/echo/v4"
+	"log"
 	"net/http"
 	"rednit/db"
-	"rednit/terrors"
 	"strconv"
 )
 
@@ -36,18 +35,14 @@ func (h Handler) GetPosts(c echo.Context) error {
 }
 
 type CreatePostRequest struct {
-	Photo string `json:"photo" validate:"required"`
+	Photo string  `json:"photo" validate:"required"`
+	Text  *string `json:"text"`
 }
 
 type UpdatePostRequest struct {
-	Text     *string `json:"text"`
-	Tags     []int   `json:"tags"`
-	Photo    string  `json:"photo" validate:"required"`
-	Location struct {
-		Latitude  *float64 `json:"latitude"`
-		Longitude *float64 `json:"longitude"`
-		Address   *string  `json:"address"`
-	} `json:"location"`
+	Text  *string `json:"text"`
+	Tags  []int   `json:"tags"`
+	Photo string  `json:"photo" validate:"required"`
 }
 
 func (h Handler) CreatePost(c echo.Context) error {
@@ -64,6 +59,7 @@ func (h Handler) CreatePost(c echo.Context) error {
 
 	post := db.Post{
 		PhotoURL: fmt.Sprintf("%s/%s", h.config.CdnURL, req.Photo),
+		Text:     req.Text,
 	}
 
 	res, err := h.st.CreatePost(uid, post)
@@ -71,6 +67,13 @@ func (h Handler) CreatePost(c echo.Context) error {
 	if err != nil {
 		return err
 	}
+
+	go func() {
+		_, err := h.runAISuggestions(uid, res.ID)
+		if err != nil {
+			log.Printf("Failed to run AI suggestions: %v", err)
+		}
+	}()
 
 	return c.JSON(http.StatusCreated, res)
 }
@@ -87,19 +90,6 @@ func GetAIUpdatedPost(post *db.Post, openAIKey string) (*db.Post, error) {
 	post.IsSpam = info.IsSpam
 
 	return post, nil
-}
-
-func (h Handler) CreatePostAISuggestions(c echo.Context) error {
-	uid := getUserID(c)
-	id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-
-	post, err := h.runAISuggestions(uid, id)
-
-	if err != nil {
-		return err
-	}
-
-	return c.JSON(http.StatusCreated, post)
 }
 
 func (h Handler) runAISuggestions(uid, postID int64) (*db.Post, error) {
@@ -158,17 +148,6 @@ func (h Handler) UpdatePost(c echo.Context) error {
 		PhotoURL: fmt.Sprintf("%s/%s", h.config.CdnURL, req.Photo),
 	}
 
-	if req.Location.Latitude != nil && req.Location.Longitude != nil {
-		post.Location = &db.Location{
-			Latitude:  *req.Location.Latitude,
-			Longitude: *req.Location.Longitude,
-		}
-
-		if req.Location.Address != nil {
-			post.Location.Address = *req.Location.Address
-		}
-	}
-
 	res, err := h.st.UpdatePost(uid, id, post, req.Tags)
 
 	if err != nil {
@@ -176,35 +155,6 @@ func (h Handler) UpdatePost(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusCreated, res)
-}
-
-func (h Handler) ReactToPost(c echo.Context) error {
-	uid := getUserID(c)
-	postID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-	reaction := db.ReactionType(c.Param("reaction"))
-
-	if reaction != db.ReactionSmile && reaction != db.ReactionFrown && reaction != db.ReactionMeh {
-		return terrors.BadRequest(fmt.Errorf("invalid reaction type: %s", reaction), "invalid data")
-	}
-
-	if err := h.st.UpdatePostReaction(uid, postID, reaction); err != nil {
-		return err
-	}
-
-	return c.NoContent(http.StatusNoContent)
-}
-
-func (h Handler) DropPostReaction(c echo.Context) error {
-	uid := getUserID(c)
-	postID, _ := strconv.ParseInt(c.Param("id"), 10, 64)
-
-	if err := h.st.DeletePostReaction(uid, postID); err != nil && errors.Is(db.ErrNotFound, err) {
-		return terrors.NotFound(err, "not found")
-	} else if err != nil {
-		return terrors.InternalServerError(err, "unable delete reaction")
-	}
-
-	return c.NoContent(http.StatusNoContent)
 }
 
 func (h Handler) GetTags(c echo.Context) error {

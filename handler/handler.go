@@ -22,8 +22,6 @@ type storage interface {
 	UpdatePost(uid, postID int64, post db.Post, tags []int) (*db.Post, error)
 	ListPosts(uid int64) ([]db.Post, error)
 	GetPostByID(uid, id int64) (*db.Post, error)
-	DeletePostReaction(uid, postID int64) error
-	UpdatePostReaction(uid, postID int64, reaction db.ReactionType) error
 	ListTags() ([]db.Tag, error)
 	UpdateUserAvatarURL(uid int64, url string) error
 	DeleteUserByID(uid int64) error

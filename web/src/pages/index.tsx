@@ -18,22 +18,6 @@ export type Post = {
 	suggested_ingredients: { name: string; amount: number }[]
 	suggested_dish_name: string
 	suggested_tags: string[]
-	reactions: {
-		frown: number
-		smile: number
-		meh: number
-	}
-	location_id: number | null
-	location: {
-		id: number
-		latitude: number
-		longitude: number
-		address: string
-	}
-	user_reaction: {
-		type: string
-		has_reacted: boolean
-	}
 	user: {
 		id: number
 		username: string
@@ -92,7 +76,7 @@ export default function HomePage() {
 							<div class="rounded-lg border bg-section">
 								<UserProfileLink user={item.user} class="p-4" />
 								<img
-									src="https://via.placeholder.com/150"
+									src={item.photo_url}
 									class="aspect-[4/3] w-full object-cover"
 									alt="Thumbnail"
 								/>
