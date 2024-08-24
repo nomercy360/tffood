@@ -132,3 +132,31 @@ func (s Storage) DeleteUserByID(uid int64) error {
 
 	return err
 }
+
+func (s Storage) UpdateUser(uid int64, user User) (*User, error) {
+	q := `
+		UPDATE users
+		SET first_name = ?, last_name = ?, username = ?, language = ?, is_premium = ?, notifications_enabled = ?
+		WHERE id = ?
+	`
+
+	res, err := s.db.Exec(q,
+		user.FirstName,
+		user.LastName,
+		user.Username,
+		user.LanguageCode,
+		user.IsPremium,
+		user.NotificationsEnabled,
+		uid,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if rowsAffected, _ := res.RowsAffected(); rowsAffected == 0 {
+		return nil, ErrNotFound
+	}
+
+	return s.GetUserByID(UserQuery{ID: uid})
+}

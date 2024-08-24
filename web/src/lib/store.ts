@@ -1,5 +1,11 @@
 import { createStore } from 'solid-js/store'
-import { User } from '~/gen'
+
+type User = {
+	id: number;
+	username: string;
+	language: string;
+	notifications_enabled: boolean;
+}
 
 type AuthStore = {
 	user: User;

@@ -13,7 +13,7 @@ import {
 	Tooltip,
 } from 'chart.js'
 import { createQuery } from '@tanstack/solid-query'
-import { fetchPosts } from '~/lib/api'
+import { fetchFoodInsights, fetchPosts } from '~/lib/api'
 import { Post } from '~/pages'
 
 Chart.register(
@@ -30,34 +30,12 @@ Chart.register(
 
 const CaloricBreakdownChart = () => {
 	const [canvasRef, setCanvasRef] = createSignal<HTMLCanvasElement | null>()
-
 	const [chartData, setChartData] = createSignal()
 
 	const query = createQuery(() => ({
-		queryKey: ['posts', 'caloric-macro-breakdown'],
-		queryFn: () => fetchPosts(),
+		queryKey: ['food-insights'],
+		queryFn: () => fetchFoodInsights(),
 	}))
-
-	const getDayName = (dateStr: string) => {
-		const date = new Date(dateStr)
-		return date.toLocaleDateString('en-US', { weekday: 'short' })
-	}
-
-	const transformData = (apiData: Post[]) => {
-		const dataByDay = {
-			Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0,
-		}
-
-		apiData.forEach((entry) => {
-			const day = getDayName(entry.created_at)
-			if (dataByDay.hasOwnProperty(day)) {
-				// @ts-ignore
-				dataByDay[day] += entry.food_insights.calories
-			}
-		})
-
-		return Object.values(dataByDay)
-	}
 
 	createEffect(() => {
 		if (!query.data) return
@@ -67,7 +45,7 @@ const CaloricBreakdownChart = () => {
 			datasets: [
 				{
 					label: 'Calories',
-					data: transformData(query.data),
+					data: query.data.caloric_breakdown,
 					backgroundColor: window.Telegram.WebApp.themeParams.accent_text_color,
 					borderRadius: 10,
 				},
@@ -92,6 +70,9 @@ const CaloricBreakdownChart = () => {
 				scales: {
 					x: {
 						stacked: true,
+						grid: {
+							display: false,
+						},
 					},
 					y: {
 						grid: {
@@ -112,3 +93,4 @@ const CaloricBreakdownChart = () => {
 }
 
 export { CaloricBreakdownChart }
+

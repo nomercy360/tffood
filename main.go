@@ -191,8 +191,10 @@ func main() {
 	g.POST("/posts", h.CreatePost)
 	g.PUT("/posts/:id", h.UpdatePost)
 	g.GET("/posts/:id", h.GetPost)
+	g.GET("/food-insights", h.GetFoodInsightsHandler)
 	g.GET("/tags", h.GetTags)
 	g.POST("/presigned-url", h.GetPresignedURL)
+	g.PUT("/user/settings", h.UpdateUserSettings)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()

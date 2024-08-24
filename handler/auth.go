@@ -102,3 +102,37 @@ func (h Handler) TelegramAuth(c echo.Context) error {
 		Token: token,
 	})
 }
+
+type UpdateUserRequest struct {
+	Language             string `json:"language"`
+	NotificationsEnabled bool   `json:"notifications_enabled"`
+}
+
+func (h Handler) UpdateUserSettings(c echo.Context) error {
+	uid := getUserID(c)
+
+	var req UpdateUserRequest
+
+	if err := c.Bind(&req); err != nil {
+		return terrors.BadRequest(err, "failed to bind request")
+	}
+
+	user, err := h.st.GetUserByID(db.UserQuery{ID: uid})
+
+	if err != nil && errors.Is(err, db.ErrNotFound) {
+		return terrors.NotFound(err, "user not found")
+	} else if err != nil {
+		return terrors.InternalServerError(err, "failed to get user")
+	}
+
+	user.LanguageCode = &req.Language
+	user.NotificationsEnabled = req.NotificationsEnabled
+
+	updated, err := h.st.UpdateUser(uid, *user)
+
+	if err != nil {
+		return terrors.InternalServerError(err, "failed to update user")
+	}
+
+	return c.JSON(http.StatusOK, updated)
+}

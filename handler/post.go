@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"rednit/db"
 	"strconv"
+	"time"
 )
 
 func (h Handler) GetPost(c echo.Context) error {
@@ -23,15 +24,61 @@ func (h Handler) GetPost(c echo.Context) error {
 }
 
 func (h Handler) GetPosts(c echo.Context) error {
-	uid := getUserID(c)
+	end := time.Now()
+	start := end.AddDate(0, -1, 0)
 
-	posts, err := h.st.ListPosts(uid)
+	posts, err := h.st.ListPosts(nil, start, end)
 
 	if err != nil {
 		return err
 	}
 
 	return c.JSON(http.StatusOK, posts)
+}
+
+func (h Handler) GetFoodInsightsHandler(c echo.Context) error {
+	uid := getUserID(c)
+	end := time.Now()
+	// one week ago
+	start := end.AddDate(0, 0, -7)
+
+	posts, err := h.st.ListPosts(&uid, start, end)
+	if err != nil {
+		return err
+	}
+
+	dayOrder := []string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
+	caloricBreakdown := map[string]int{
+		"Mon": 0, "Tue": 0, "Wed": 0, "Thu": 0, "Fri": 0, "Sat": 0, "Sun": 0,
+	}
+
+	macros := map[string]int{
+		"proteins":      0,
+		"fats":          0,
+		"carbohydrates": 0,
+	}
+
+	for _, post := range posts {
+		day := post.CreatedAt.Weekday().String()[:3] // Get short weekday name
+		if post.FoodInsights != nil {
+			caloricBreakdown[day] += post.FoodInsights.Calories
+			macros["proteins"] += post.FoodInsights.Proteins
+			macros["fats"] += post.FoodInsights.Fats
+			macros["carbohydrates"] += post.FoodInsights.Carbohydrates
+		}
+	}
+
+	orderedCaloricBreakdown := make([]int, len(dayOrder))
+	for i, day := range dayOrder {
+		orderedCaloricBreakdown[i] = caloricBreakdown[day]
+	}
+
+	response := map[string]interface{}{
+		"caloric_breakdown": orderedCaloricBreakdown,
+		"macros":            macros,
+	}
+
+	return c.JSON(http.StatusOK, response)
 }
 
 type CreatePostRequest struct {

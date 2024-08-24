@@ -8,8 +8,7 @@ import {
 	Legend,
 } from 'chart.js'
 import { createQuery } from '@tanstack/solid-query'
-import { fetchPosts } from '~/lib/api'
-import { Post } from '~/pages'
+import { fetchFoodInsights } from '~/lib/api'
 
 Chart.register(PieController, ArcElement, Tooltip, Legend)
 
@@ -19,31 +18,13 @@ const MacroPieChart = () => {
 
 	const query = createQuery(() => ({
 		queryKey: ['posts', 'macro-pie-chart'],
-		queryFn: () => fetchPosts(),
+		queryFn: () => fetchFoodInsights(),
 	}))
-
-	const aggregateMacroData = (apiData: Post[]) => {
-		let today = new Date().toISOString().split('T')[0]
-		let macros = { proteins: 0, fats: 0, carbohydrates: 0 }
-
-		apiData.forEach((entry) => {
-			let entryDate = new Date(entry.created_at).toISOString().split('T')[0]
-			if (entryDate === today) {
-				macros.proteins += entry.food_insights.proteins || 0
-				macros.fats += entry.food_insights.fats || 0
-				macros.carbohydrates += entry.food_insights.carbohydrates || 0
-			}
-		})
-
-		return macros
-	}
 
 	createEffect(() => {
 		if (!query.data) return
 
-		const macros = aggregateMacroData(query.data)
-
-		console.log(macros)
+		const macros = query.data.macros
 
 		setChartData({
 			labels: ['Proteins', 'Fats', 'Carbohydrates'],
@@ -66,7 +47,6 @@ const MacroPieChart = () => {
 			type: 'pie',
 			data: chartData() as any,
 			options: {
-				radius: '80%',
 				responsive: true,
 				plugins: {
 					legend: {
@@ -87,5 +67,6 @@ const MacroPieChart = () => {
 
 	return <canvas ref={(el) => setCanvasRef(el)} />
 }
+
 
 export { MacroPieChart }

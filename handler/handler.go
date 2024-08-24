@@ -20,13 +20,14 @@ type storage interface {
 	CreateUser(user db.User) (*db.User, error)
 	CreatePost(uid int64, post db.Post) (*db.Post, error)
 	UpdatePost(uid, postID int64, post db.Post, tags []int) (*db.Post, error)
-	ListPosts(uid int64) ([]db.Post, error)
+	ListPosts(uid *int64, startDate, endDate time.Time) ([]db.Post, error)
 	GetPostByID(uid, id int64) (*db.Post, error)
 	ListTags() ([]db.Tag, error)
 	UpdateUserAvatarURL(uid int64, url string) error
 	DeleteUserByID(uid int64) error
 	UpdatePostSuggestions(uid, postID int64, post db.Post) (*db.Post, error)
 	UpdatePostFoodInsights(uid, postID int64, data db.FoodInsights) (*db.Post, error)
+	UpdateUser(uid int64, user db.User) (*db.User, error)
 }
 
 type Handler struct {

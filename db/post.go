@@ -249,8 +249,9 @@ func (s Storage) CreatePost(uid int64, post Post) (*Post, error) {
 	return s.GetPostByID(uid, id)
 }
 
-func (s Storage) ListPosts(uid int64) ([]Post, error) {
+func (s Storage) ListPosts(uid *int64, startDate, endDate time.Time) ([]Post, error) {
 	var posts []Post
+	args := []interface{}{startDate, endDate}
 
 	query := `
 		SELECT p.id,
@@ -273,15 +274,25 @@ func (s Storage) ListPosts(uid int64) ([]Post, error) {
 				 JOIN users u ON p.user_id = u.id
 				 LEFT JOIN post_tags pt ON p.id = pt.post_id
 				 LEFT JOIN tags t ON pt.tag_id = t.id
+		WHERE p.created_at BETWEEN ? AND ?
+	`
+
+	if uid != nil {
+		query += " AND p.user_id = ?"
+		args = append(args, *uid)
+	}
+
+	query += `
 		GROUP BY p.id
 		ORDER BY p.created_at DESC
 		LIMIT 100
 	`
 
-	rows, err := s.db.Query(query)
+	rows, err := s.db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	for rows.Next() {
