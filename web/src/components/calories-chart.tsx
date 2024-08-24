@@ -15,6 +15,7 @@ import {
 import { createQuery } from '@tanstack/solid-query'
 import { fetchFoodInsights, fetchPosts } from '~/lib/api'
 import { Post } from '~/pages'
+import { useTranslations } from '~/lib/locale-context'
 
 Chart.register(
 	Colors,
@@ -37,6 +38,8 @@ const CaloricBreakdownChart = () => {
 		queryFn: () => fetchFoodInsights(),
 	}))
 
+	const { t } = useTranslations()
+
 	createEffect(() => {
 		if (!query.data) return
 
@@ -52,6 +55,7 @@ const CaloricBreakdownChart = () => {
 			],
 		})
 
+
 		const ctx = canvasRef()?.getContext('2d') as ChartItem
 		const chart = new Chart(ctx, {
 			type: 'bar',
@@ -64,7 +68,7 @@ const CaloricBreakdownChart = () => {
 					},
 					title: {
 						display: true,
-						text: 'Daily Caloric Breakdown',
+						text: t('common.caloric_breakdown_chart_title'),
 					},
 				},
 				scales: {

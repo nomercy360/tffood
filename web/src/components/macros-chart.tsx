@@ -9,6 +9,7 @@ import {
 } from 'chart.js'
 import { createQuery } from '@tanstack/solid-query'
 import { fetchFoodInsights } from '~/lib/api'
+import { useTranslations } from '~/lib/locale-context'
 
 Chart.register(PieController, ArcElement, Tooltip, Legend)
 
@@ -20,6 +21,8 @@ const MacroPieChart = () => {
 		queryKey: ['posts', 'macro-pie-chart'],
 		queryFn: () => fetchFoodInsights(),
 	}))
+
+	const { t } = useTranslations()
 
 	createEffect(() => {
 		if (!query.data) return
@@ -54,7 +57,7 @@ const MacroPieChart = () => {
 					},
 					title: {
 						display: true,
-						text: 'Macro Breakdown for Today',
+						text: t('common.macro_chart_title'),
 					},
 				},
 			},

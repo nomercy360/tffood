@@ -1,9 +1,11 @@
 import { A, useLocation } from '@solidjs/router'
 import { cn } from '~/lib/utils'
-import { store } from '~/lib/store'
+import { useTranslations } from '~/lib/locale-context'
 
 export default function NavigationTabs(props: any) {
 	const location = useLocation()
+
+	const { t } = useTranslations()
 
 	return (
 		<div class="pt-12">
@@ -26,7 +28,7 @@ export default function NavigationTabs(props: any) {
 								aria-controls="feed"
 								aria-selected="false"
 							>
-								Latest
+								{t('common.feed')}
 							</A>
 						</li>
 						<li role="presentation">
@@ -41,7 +43,7 @@ export default function NavigationTabs(props: any) {
 								aria-controls="posts"
 								aria-selected="false"
 							>
-								My Activity
+								{t('common.activity')}
 							</A>
 						</li>
 					</ul>

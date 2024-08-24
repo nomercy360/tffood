@@ -1,0 +1,19 @@
+{
+  "feed": "Последние",
+  "activity": "Моя активность",
+  "macro_chart_title": "Разбивка макроэлементов на сегодня",
+  "caloric_breakdown_chart_title": "Ежедневная разбивка калорий",
+  "notifications_enabled": "Уведомления включены",
+  "language": "Язык",
+  "russian": "Русский",
+  "english": "Английский",
+  "save_changes": "Сохранить изменения",
+  "dietary_information": "Информация о питании",
+  "calories": "Калории",
+  "proteins": "Белки",
+  "fats": "Жиры",
+  "carbohydrates": "Углеводы",
+  "kcal": "ккал",
+  "g": "г",
+  "ingredients": "Ингредиенты"
+}

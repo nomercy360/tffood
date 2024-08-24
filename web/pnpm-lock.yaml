@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  '@solid-primitives/i18n':
+    specifier: ^2.1.1
+    version: 2.1.1(solid-js@1.8.21)
   '@solidjs/router':
     specifier: ^0.13.5
     version: 0.13.6(solid-js@1.8.21)
@@ -869,6 +872,14 @@ packages:
       '@solid-primitives/utils': 6.2.2(solid-js@1.8.21)
       solid-js: 1.8.21
     dev: true
+
+  /@solid-primitives/i18n@2.1.1(solid-js@1.8.21):
+    resolution: {integrity: sha512-1p9B8hveu+gzFRWfXcRtdzzEdr7gw3c8uLXm+2bU33JHgiI8kYJsWvG128sE6vU1ZtYGPrGq980Jd6hxYupyZQ==}
+    peerDependencies:
+      solid-js: ^1.6.12
+    dependencies:
+      solid-js: 1.8.21
+    dev: false
 
   /@solid-primitives/keyboard@1.2.6(solid-js@1.8.21):
     resolution: {integrity: sha512-ZbXkzAwFs+6hyaZ2hT9uQ38iPZzGTjV6kWvVvJ3BDfKASg0dDDuhEZRKmpkmpLfnqOabV58BUkASJWMAA4dZCg==}

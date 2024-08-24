@@ -1,0 +1,19 @@
+{
+  "feed": "Latest",
+  "activity": "My Activity",
+  "macro_chart_title": "Macro Breakdown for Today",
+  "caloric_breakdown_chart_title": "Daily Caloric Breakdown",
+  "notifications_enabled": "Notifications Enabled",
+  "language": "Language",
+  "russian": "Russian",
+  "english": "English",
+  "save_changes": "Save Changes",
+  "dietary_information": "Dietary Information",
+  "calories": "Calories",
+  "proteins": "Proteins",
+  "fats": "Fats",
+  "carbohydrates": "Carbohydrates",
+  "kcal": "kcal",
+  "g": "g",
+  "ingredients": "Ingredients"
+}

@@ -67,6 +67,7 @@ export default function HomePage() {
 		window.Telegram.WebApp.openTelegramLink(url)
 	}
 
+
 	return (
 		<section class="p-4">
 			<div class="grid gap-2">
@@ -133,7 +134,7 @@ export function UserProfileLink(props: { class: any; user: Post['user'] }) {
 			<img src={props.user.avatar_url} class="size-8 rounded-full" alt="User" />
 			<div class="flex flex-col items-start justify-start">
 				<p class="text-sm font-semibold text-hint">@{props.user.username}</p>
-				<p class="text-main text-sm font-semibold">
+				<p class="text-sm font-semibold text-foreground">
 					{props.user?.first_name} {props.user?.last_name}
 				</p>
 			</div>

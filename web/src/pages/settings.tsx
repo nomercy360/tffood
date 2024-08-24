@@ -2,10 +2,13 @@ import { createSignal, onCleanup, onMount } from 'solid-js'
 import { useMainButton } from '~/lib/useMainButton'
 import { store } from '~/lib/store'
 import { fetchUpdateUserSettings } from '~/lib/api'
+import { useTranslations } from '~/lib/locale-context'
 
 export default function SettingsPage() {
 	const [notificationsEnabled, setNotificationsEnabled] = createSignal(store.user.notifications_enabled)
 	const [language, setLanguage] = createSignal(store.user.language)
+
+	const { t } = useTranslations()
 
 	const mutate = async () => {
 		await fetchUpdateUserSettings({
@@ -17,7 +20,7 @@ export default function SettingsPage() {
 	const mainButton = useMainButton()
 
 	onMount(async () => {
-		mainButton.setVisible('Save Changes')
+		mainButton.setVisible(t('common.save_changes'))
 		mainButton.onClick(mutate)
 	})
 
@@ -26,10 +29,13 @@ export default function SettingsPage() {
 			.offClick(mutate)
 	})
 
+
 	return (
 		<form class="mx-auto min-h-screen space-y-4 bg-white p-6">
 			<label class="inline-flex w-full cursor-pointer items-center justify-between">
-				<span class="text-sm font-medium text-foreground dark:text-secondary">Notifications Enabled</span>
+				<span class="text-sm font-medium text-foreground dark:text-secondary">
+					{t('common.notifications_enabled')}
+				</span>
 				<input
 					type="checkbox"
 					checked={notificationsEnabled()}
@@ -40,7 +46,7 @@ export default function SettingsPage() {
 			</label>
 			<div class="space-y-1">
 				<label for="language" class="block text-sm font-medium text-foreground">
-					Language
+					{t('common.language')}
 				</label>
 				<select
 					id="language"
@@ -49,10 +55,10 @@ export default function SettingsPage() {
 					class="block h-10 w-full rounded-md border bg-white px-4"
 				>
 					<option value="en">
-						English
+						{t('common.english')}
 					</option>
 					<option value="ru">
-						Russian
+						{t('common.russian')}
 					</option>
 				</select>
 			</div>
