@@ -43,21 +43,20 @@ const MacroPieChart = () => {
 
 		const macros = aggregateMacroData(query.data)
 
+		console.log(macros)
+
 		setChartData({
 			labels: ['Proteins', 'Fats', 'Carbohydrates'],
 			datasets: [
 				{
 					data: [macros.proteins, macros.fats, macros.carbohydrates],
 					backgroundColor: [
-						'#FF6384', // Red for Proteins
-						'#36A2EB', // Blue for Fats
-						'#FFCE56', // Yellow for Carbohydrates
+						'#fb2954', // Red for Proteins
+						'#4277f8', // Blue for Fats
+						'#f8c542', // Yellow for Carbohydrates
 					],
-					hoverBackgroundColor: [
-						'#FF6384',
-						'#36A2EB',
-						'#FFCE56',
-					],
+					hoverBackgroundColor: ['#fb2954', '#4277f8', '#f8c542'],
+					borderWidth: 0,
 				},
 			],
 		})

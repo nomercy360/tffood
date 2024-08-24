@@ -21,13 +21,31 @@ import (
 
 var messages = map[string]map[string]string{
 	"en": {
-		"welcome":    "Welcome!\n*EatZ Food* is a logging app that helps you track your meals and get insights about your nutrition. Send me a photo of your meal to get started!",
-		"openWebApp": "You can open the web app by tapping the button below.",
+		"welcome":          "This bot will help you track your meals and get insights about your nutrition.\nTry sending a photo",
+		"openWebApp":       "You can open the web app by tapping the button below.",
+		"gettingInsights":  "Getting insights from the image...",
+		"photoAddError":    "Please send the picture as a 'Photo', not as a 'File'.",
+		"uploadError":      "Failed to upload the image. Please try again.",
+		"insightsNotFound": "No insights found for this image.",
 	},
 	"ru": {
-		"welcome":    "Добро пожаловать!\n*EatZ Food* - это приложение для отслеживания питания, которое поможет вам отслеживать приемы пищи и получать информацию о вашем питании. Отправьте мне фото вашего блюда, чтобы начать!",
-		"openWebApp": "Вы можете открыть веб-приложение, нажав на кнопку ниже.",
+		"welcome":          "Этот бот поможет вам отслеживать приемы пищи и получать информацию о вашем питании.\nПопробуй отправить фото",
+		"openWebApp":       "Вы можете открыть веб-приложение, нажав на кнопку ниже.",
+		"gettingInsights":  "Обрабатка в процессе...",
+		"photoAddError":    "Пожалуйста, отправьте изображение как 'Фото', а не как 'Файл'.",
+		"uploadError":      "Не удалось загрузить изображение. Пожалуйста, попробуйте еще раз.",
+		"insightsNotFound": "Для этого изображения не найдено данных.",
 	},
+}
+
+func getInsightsText(lang string, insights *db.FoodInsights, dishName *string) string {
+	if lang == "ru" {
+		return fmt.Sprintf("*%s*\n\nКалории: %d ккал\n\nБелки: %d г\nУглеводы: %d г\nЖиры: %d г",
+			*dishName, insights.Calories, insights.Proteins, insights.Carbohydrates, insights.Fats)
+	} else {
+		return fmt.Sprintf("*%s*\nCalories: %d kcal\n\nProteins: %d g\nСarbohydrates: %d g\nАats: %d g",
+			*dishName, insights.Calories, insights.Proteins, insights.Carbohydrates, insights.Fats)
+	}
 }
 
 func (h Handler) HandleWebhook(c echo.Context) error {
@@ -83,11 +101,11 @@ func (h Handler) HandleWebhook(c echo.Context) error {
 			return c.NoContent(http.StatusOK)
 		}
 
-		photo := &tgModels.InputFileString{Data: "https://assets.peatch.io/peatch-preview.png"}
+		msg := messages[*user.LanguageCode]["welcome"]
 
-		params := &telegram.SendPhotoParams{ChatID: update.Message.Chat.ID, Caption: "Hello", ReplyMarkup: &webApp, Photo: photo, ParseMode: "Markdown"}
+		params := &telegram.SendMessageParams{ChatID: update.Message.Chat.ID, Text: msg, ReplyMarkup: &webApp, ParseMode: "Markdown"}
 
-		if _, err := h.tg.SendPhoto(context.Background(), params); err != nil {
+		if _, err := h.tg.SendMessage(context.Background(), params); err != nil {
 			log.Printf("Failed to send message: %v", err)
 			return c.NoContent(http.StatusOK)
 		}
@@ -113,15 +131,15 @@ func (h Handler) HandleWebhook(c echo.Context) error {
 		if update.Message.Photo != nil && len(update.Message.Photo) > 0 {
 			if err := h.onImageMessage(lang, user.ID, update); err != nil {
 				log.Printf("Failed to process image from telegram. User: %d, Error: %v", user.ID, err)
-				msg.Text = "Failed to process the image. Please try again."
+				msg.Text = messages[lang]["uploadError"]
 			} else {
-				msg.Text = "Getting insights from the image. Please wait."
+				msg.Text = messages[lang]["gettingInsights"]
 			}
 
 		} else if update.Message.Document != nil {
-			msg.Text = "Please send the picture as a 'Photo', not as a 'File'."
+			msg.Text = messages[lang]["photoAddError"]
 		} else {
-			msg.Text = "You are already registered. Open the app to continue."
+			msg.Text = messages[lang]["openWebApp"]
 			msg.ReplyMarkup = &webApp
 		}
 
@@ -172,9 +190,9 @@ func (h Handler) onImageMessage(lang string, uid int64, update tgModels.Update) 
 		var msgText string
 
 		if insights != nil && postWithSuggestions.SuggestedDishName != nil {
-			msgText = fmt.Sprintf("*%s*:\n- Calories: %d kcal\n- Proteins: %d g\n- Fats: %d g\n- Carbohydrates: %d g\nOpen the app to see more details.", *postWithSuggestions.SuggestedDishName, insights.Calories, insights.Proteins, insights.Fats, insights.Carbohydrates)
+			msgText = getInsightsText(lang, insights, postWithSuggestions.SuggestedDishName)
 		} else {
-			msgText = "Your post has been successfully processed. Open the app to see the results."
+			msgText = messages[lang]["insightsNotFound"]
 		}
 
 		msg := telegram.SendMessageParams{

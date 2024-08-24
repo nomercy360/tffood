@@ -23,6 +23,7 @@ type LanguageContent struct {
 	NutritionalDescription      string
 	IngredientNameDescription   string
 	IngredientAmountDescription string
+	Tags                        string
 }
 
 func getLanguageContent(language string) LanguageContent {
@@ -38,6 +39,7 @@ func getLanguageContent(language string) LanguageContent {
 			NutritionalDescription:      "Форматирует ответ анализа питательности в структурированный, читаемый формат для отображения или дальнейшей обработки. Эта функция организует полученные данные анализа питательности в разделы калорийности, макро- и микронутриентов, а также пригодности блюда для различных диет.",
 			IngredientNameDescription:   "Название ингредиента",
 			IngredientAmountDescription: "Приблизительное количество ингредиента в граммах",
+			Tags:                        "\"веган\", \"без глютена\", \"богатый белком\", \"низкоуглеводный\", \"палео\", \"без лактозы\", \"вегетарианский\", \"без сахара\", \"низкожирный\", \"средиземноморский\", \"богатый клетчаткой\"",
 		}
 	}
 	return LanguageContent{
@@ -51,6 +53,7 @@ func getLanguageContent(language string) LanguageContent {
 		NutritionalDescription:      "Formats the nutritional analysis response into a structured, readable format for display or further processing. This function takes the raw data from a nutritional analysis and organizes it into sections for calories, macronutrients, micronutrients, and dietary suitability.",
 		IngredientNameDescription:   "Name of the ingredient",
 		IngredientAmountDescription: "Approximate amount of the ingredient in grams",
+		Tags:                        "\"vegan\", \"gluten-free\", \"high-protein\", \"low-carb\", \"paleo\", \"dairy-free\", \"vegetarian\", \"sugar-free\", \"low-fat\", \"mediterranean\", \"high-fiber\"",
 	}
 }
 
@@ -112,15 +115,7 @@ func getRequestBody(lang, imageUrl string, caption *string) string {
                         "type": "array",
                         "items": {
                             "type": "string",
-                            "enum": [
-                                "веган",
-                                "без глютена",
-								"без лактозы",
-								"кето",
-								"палео",
-								"вегетарианец",
-								"белковая диета"
-                            ]
+                            "enum": [%s]
                         },
                         "description": "%s"
                     },
@@ -159,7 +154,18 @@ func getRequestBody(lang, imageUrl string, caption *string) string {
     "top_p": 1,
     "frequency_penalty": 0,
     "presence_penalty": 0
-}`, content.AnalyzePrompt, captionText, imageUrl, content.AnalyzeDescription, content.SpamDescription, content.DishDescription, content.TagsDescription, content.IngredientNameDescription, content.IngredientAmountDescription, content.IngredientsDescription)
+}`,
+		content.AnalyzePrompt,
+		captionText, imageUrl,
+		content.AnalyzeDescription,
+		content.SpamDescription,
+		content.DishDescription,
+		content.Tags,
+		content.TagsDescription,
+		content.IngredientNameDescription,
+		content.IngredientAmountDescription,
+		content.IngredientsDescription,
+	)
 }
 
 func nutritionRequestBody(lang, foodInfo string) string {
@@ -245,7 +251,12 @@ func nutritionRequestBody(lang, foodInfo string) string {
     "top_p": 1,
     "frequency_penalty": 0,
     "presence_penalty": 0
-}`, content.NutritionalPrompt, content.NutritionalPrompt, foodInfo, content.NutritionalDescription)
+}`,
+		content.NutritionalPrompt,
+		content.NutritionalPrompt,
+		foodInfo,
+		content.NutritionalDescription,
+	)
 }
 
 type OpenAIResponse struct {
