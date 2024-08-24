@@ -28,6 +28,7 @@ type storage interface {
 	UpdatePostSuggestions(uid, postID int64, post db.Post) (*db.Post, error)
 	UpdatePostFoodInsights(uid, postID int64, data db.FoodInsights) (*db.Post, error)
 	UpdateUser(uid int64, user db.User) (*db.User, error)
+	UpdateUserRequestToJoin(uid int64) error
 }
 
 type Handler struct {

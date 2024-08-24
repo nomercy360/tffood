@@ -3,19 +3,21 @@ package db
 import "time"
 
 type User struct {
-	ID                   int64     `db:"id" json:"id"`
-	FirstName            *string   `db:"first_name" json:"first_name"`
-	LastName             *string   `db:"last_name" json:"last_name"`
-	Username             string    `db:"username" json:"username"`
-	ChatID               int64     `db:"chat_id" json:"chat_id"`
-	LanguageCode         *string   `db:"language" json:"language"`
-	IsPremium            bool      `db:"is_premium" json:"is_premium"`
-	CreatedAt            time.Time `db:"created_at" json:"created_at"`
-	UpdatedAt            time.Time `db:"updated_at" json:"updated_at"`
-	LastSeenAt           time.Time `db:"last_seen_at" json:"last_seen_at"`
-	NotificationsEnabled bool      `db:"notifications_enabled" json:"notifications_enabled"`
-	AvatarURL            *string   `db:"avatar_url" json:"avatar_url"`
-	Title                *string   `db:"title" json:"title"`
+	ID                   int64      `db:"id" json:"id"`
+	FirstName            *string    `db:"first_name" json:"first_name"`
+	LastName             *string    `db:"last_name" json:"last_name"`
+	Username             string     `db:"username" json:"username"`
+	ChatID               int64      `db:"chat_id" json:"chat_id"`
+	LanguageCode         *string    `db:"language" json:"language"`
+	IsPremium            bool       `db:"is_premium" json:"is_premium"`
+	CreatedAt            time.Time  `db:"created_at" json:"created_at"`
+	UpdatedAt            time.Time  `db:"updated_at" json:"updated_at"`
+	LastSeenAt           time.Time  `db:"last_seen_at" json:"last_seen_at"`
+	NotificationsEnabled bool       `db:"notifications_enabled" json:"notifications_enabled"`
+	AvatarURL            *string    `db:"avatar_url" json:"avatar_url"`
+	Title                *string    `db:"title" json:"title"`
+	RequestToJoinAt      *time.Time `db:"request_to_join_at" json:"request_to_join_at"`
+	CommunityStatus      string     `db:"community_status" json:"community_status"`
 }
 
 type UserQuery struct {
@@ -29,7 +31,8 @@ func (s Storage) GetUserByID(query UserQuery) (*User, error) {
 	var args interface{}
 
 	q := `
-		SELECT id, first_name, last_name, username, chat_id, language, is_premium, created_at, updated_at, last_seen_at, notifications_enabled, avatar_url
+		SELECT id, first_name, last_name, username, chat_id, language, is_premium, created_at, updated_at, last_seen_at, notifications_enabled, avatar_url,
+			title, request_to_join_at, community_status
 		FROM users
 	`
 
@@ -54,6 +57,9 @@ func (s Storage) GetUserByID(query UserQuery) (*User, error) {
 		&user.LastSeenAt,
 		&user.NotificationsEnabled,
 		&user.AvatarURL,
+		&user.Title,
+		&user.RequestToJoinAt,
+		&user.CommunityStatus,
 	)
 
 	if IsNoRowsError(err) {
@@ -159,4 +165,24 @@ func (s Storage) UpdateUser(uid int64, user User) (*User, error) {
 	}
 
 	return s.GetUserByID(UserQuery{ID: uid})
+}
+
+func (s Storage) UpdateUserRequestToJoin(uid int64) error {
+	q := `
+		UPDATE users
+		SET request_to_join_at = CURRENT_TIMESTAMP
+		WHERE id = ? AND request_to_join_at IS NULL
+	`
+
+	res, err := s.db.Exec(q, uid)
+
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected, _ := res.RowsAffected(); rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return err
 }

@@ -122,3 +122,7 @@ export async function fetchTags() {
 	const response = await apiFetch({ endpoint: '/tags' })
 	return response as any
 }
+
+export async function fetchSubmitJoinRequest() {
+	await apiFetch({ endpoint: '/community/join', method: 'POST' })
+}

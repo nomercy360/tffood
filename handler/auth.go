@@ -136,3 +136,17 @@ func (h Handler) UpdateUserSettings(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, updated)
 }
+
+func (h Handler) SubmitJoinCommunityRequest(c echo.Context) error {
+	uid := getUserID(c)
+
+	err := h.st.UpdateUserRequestToJoin(uid)
+
+	if err != nil && errors.Is(err, db.ErrNotFound) {
+		return terrors.NotFound(err, "not found")
+	} else if err != nil {
+		return terrors.InternalServerError(err, "failed to update user")
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}

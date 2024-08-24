@@ -15,7 +15,10 @@ func (s Storage) Migrate() error {
 		    last_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		    notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
 		    avatar_url TEXT,
-		    title TEXT
+		    title TEXT,
+		    request_to_join_at TIMESTAMP DEFAULT NULL,
+		    community_status TEXT NOT NULL DEFAULT 'none',
+		    UNIQUE (chat_id)
 		);
 
 		CREATE TABLE IF NOT EXISTS posts (

@@ -5,6 +5,8 @@ type User = {
 	username: string;
 	language: string;
 	notifications_enabled: boolean;
+	community_status: string;
+	request_to_join_at: string;
 }
 
 type AuthStore = {

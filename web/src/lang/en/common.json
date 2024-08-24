@@ -15,5 +15,9 @@
   "carbohydrates": "Carbohydrates",
   "kcal": "kcal",
   "g": "g",
-  "ingredients": "Ingredients"
+  "ingredients": "Ingredients",
+  "join_community": "Join Our Community",
+  "join_community_description": "Join our community to get access to all the features of the app",
+  "join_community_button": "Request Access",
+  "join_community_requested": "Access Requested"
 }

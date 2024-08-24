@@ -29,7 +29,6 @@ export default function SettingsPage() {
 			.offClick(mutate)
 	})
 
-
 	return (
 		<form class="mx-auto min-h-screen space-y-4 bg-white p-6">
 			<label class="inline-flex w-full cursor-pointer items-center justify-between">
@@ -52,7 +51,7 @@ export default function SettingsPage() {
 					id="language"
 					value={store.user.language}
 					onChange={(e) => setLanguage(e.target.value)}
-					class="block h-10 w-full rounded-md border bg-white px-4"
+					class="block h-10 w-full rounded-md border px-4 text-foreground"
 				>
 					<option value="en">
 						{t('common.english')}

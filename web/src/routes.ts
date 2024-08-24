@@ -4,6 +4,7 @@ import type { RouteDefinition } from '@solidjs/router'
 import HomePage from '~/pages/index'
 import NavigationTabs from '~/components/tabs'
 import ActivityPage from '~/pages/activity'
+import JoinCommunity from '~/components/join-community'
 
 export const routes: RouteDefinition[] = [
 	{

@@ -195,6 +195,7 @@ func main() {
 	g.GET("/tags", h.GetTags)
 	g.POST("/presigned-url", h.GetPresignedURL)
 	g.PUT("/user/settings", h.UpdateUserSettings)
+	g.POST("/community/join", h.SubmitJoinCommunityRequest)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()

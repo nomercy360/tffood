@@ -1,4 +1,4 @@
-import { For, onCleanup, onMount, Show } from 'solid-js'
+import { For, Match, onCleanup, onMount, Show, Switch } from 'solid-js'
 import { cn, timeSince } from '~/lib/utils'
 import { useMainButton } from '~/lib/useMainButton'
 import { useNavigate } from '@solidjs/router'
@@ -6,6 +6,8 @@ import { fetchPosts } from '~/lib/api'
 import { createQuery } from '@tanstack/solid-query'
 import { Link } from '~/components/link'
 import { IconInfo, IconShare } from '~/components/icons'
+import { store } from '~/lib/store'
+import JoinCommunity from '~/components/join-community'
 
 export type Post = {
 	id: number
@@ -35,6 +37,19 @@ export type Post = {
 }
 
 export default function HomePage() {
+	return (
+		<Switch>
+			<Match when={store.user.community_status == 'member'}>
+				<Feed />
+			</Match>
+			<Match when={store.user.community_status == 'none'}>
+				<JoinCommunity />
+			</Match>
+		</Switch>
+	)
+}
+
+function Feed() {
 	const query = createQuery(() => ({
 		queryKey: ['posts'],
 		queryFn: () => fetchPosts(),
@@ -56,57 +71,12 @@ export default function HomePage() {
 		mainButton.hide()
 	})
 
-	function sharePostURl(postID: string) {
-		const url =
-			'https://t.me/share/url?' +
-			new URLSearchParams({
-				url: 'https://t.me/eatzfood_bot/app?startapp=p' + postID,
-			}).toString() +
-			'&text=Check out this post'
-
-		window.Telegram.WebApp.openTelegramLink(url)
-	}
-
-
 	return (
 		<section class="p-4">
 			<div class="grid gap-2">
 				<Show when={query.isSuccess} fallback={<Loader />}>
 					<For each={query.data as Post[]}>
-						{(item) => (
-							<div class="rounded-lg border bg-section">
-								<UserProfileLink user={item.user} class="p-4" />
-								<img
-									src={item.photo_url}
-									class="aspect-[4/3] w-full object-cover"
-									alt="Thumbnail"
-								/>
-								<div class="p-3.5">
-									<p class="text-sm text-hint">
-										{item.text || item.suggested_dish_name}
-									</p>
-									<div class="mt-4 flex w-full flex-row items-center justify-between">
-										<div class="flex flex-row items-center justify-start gap-2">
-											<button
-												class="flex size-8 flex-row items-center justify-center gap-1.5 rounded-lg"
-												onClick={() => sharePostURl(item.id.toString())}
-											>
-												<IconShare class="size-5" />
-											</button>
-											<Link
-												class="flex size-8 flex-row items-center justify-center gap-1.5 rounded-lg"
-												href={`/posts/${item.id}`}
-											>
-												<IconInfo class="size-5" />
-											</Link>
-										</div>
-										<span class="text-xs text-hint">
-											{timeSince(item.created_at)}
-										</span>
-									</div>
-								</div>
-							</div>
-						)}
+						{(item) => (<PostCard post={item} class="" />)}
 					</For>
 				</Show>
 			</div>
@@ -139,5 +109,53 @@ export function UserProfileLink(props: { class: any; user: Post['user'] }) {
 				</p>
 			</div>
 		</Link>
+	)
+}
+
+export function PostCard(props: { post: Post, class: any }) {
+	function sharePostURl(postID: string) {
+		const url =
+			'https://t.me/share/url?' +
+			new URLSearchParams({
+				url: 'https://t.me/eatzfood_bot/app?startapp=p' + postID,
+			}).toString() +
+			'&text=Check out this post'
+
+		window.Telegram.WebApp.openTelegramLink(url)
+	}
+
+	return (
+		<div class={cn('rounded-lg border bg-section', props.class)}>
+			<UserProfileLink user={props.post.user} class="p-4" />
+			<img
+				src={props.post.photo_url}
+				class="aspect-[4/3] w-full object-cover"
+				alt="Thumbnail"
+			/>
+			<div class="p-3.5">
+				<p class="text-sm text-hint">
+					{props.post.text || props.post.suggested_dish_name}
+				</p>
+				<div class="mt-4 flex w-full flex-row items-center justify-between">
+					<div class="flex flex-row items-center justify-start gap-2">
+						<button
+							class="flex size-8 flex-row items-center justify-center gap-1.5 rounded-lg"
+							onClick={() => sharePostURl(props.post.id.toString())}
+						>
+							<IconShare class="size-5" />
+						</button>
+						<Link
+							class="flex size-8 flex-row items-center justify-center gap-1.5 rounded-lg"
+							href={`/posts/${props.post.id}`}
+						>
+							<IconInfo class="size-5" />
+						</Link>
+					</div>
+					<span class="text-xs text-hint">
+						{timeSince(props.post.created_at)}
+					</span>
+				</div>
+			</div>
+		</div>
 	)
 }

@@ -15,5 +15,9 @@
   "carbohydrates": "Углеводы",
   "kcal": "ккал",
   "g": "г",
-  "ingredients": "Ингредиенты"
+  "ingredients": "Ингредиенты",
+  "join_community": "Присоединиться к нашему сообществу",
+  "join_community_description": "Присоединяйтесь к нашему сообществу, чтобы получить доступ ко всем функциям приложения",
+  "join_community_button": "Запросить доступ",
+  "join_community_requested": "Запрос на доступ отправлен"
 }
