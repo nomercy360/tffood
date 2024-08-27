@@ -22,18 +22,18 @@ export default function UserProfilePage(props: any) {
 				/>
 				<div class="p-2">
 					<p class="text-sm font-medium">
-						{query.data?.text || query.data?.suggested_dish_name}
+						{query.data?.text || query.data?.dish_name}
 					</p>
-					<Show when={query.data?.suggested_ingredients}>
+					<Show when={query.data?.ingredients}>
 						<p class="mt-2 text-xs text-hint">
 							{t('common.ingredients')}:{' '}
-							{query.data?.suggested_ingredients
+							{query.data?.ingredients
 								.map((i) => `${i.name} (${i.amount}g)`)
 								.join(', ')}
 						</p>
 					</Show>
 					<div class="mt-4 flex flex-row flex-wrap items-center justify-start gap-1.5">
-						<For each={query.data?.suggested_tags}>
+						<For each={query.data?.tags}>
 							{(tag) => (
 								<span
 									class="flex h-6 items-center justify-center rounded-lg bg-background px-2 py-0.5 text-xs text-hint">

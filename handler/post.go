@@ -136,20 +136,6 @@ func (h Handler) CreatePost(c echo.Context) error {
 	return c.JSON(http.StatusCreated, res)
 }
 
-func getAIUpdatedPost(lang string, post *db.Post, openAIKey string) (*db.Post, error) {
-	info, err := getFoodPictureInfo(lang, post.PhotoURL, post.Text, openAIKey)
-	if err != nil {
-		return nil, err
-	}
-
-	post.SuggestedIngredients = info.Ingredients
-	post.SuggestedDishName = &info.DishName
-	post.SuggestedTags = info.Tags
-	post.IsSpam = info.IsSpam
-
-	return post, nil
-}
-
 func (h Handler) runAISuggestions(lang string, uid, postID int64) (*db.Post, error) {
 	post, err := h.st.GetPostByID(uid, postID)
 
@@ -157,33 +143,42 @@ func (h Handler) runAISuggestions(lang string, uid, postID int64) (*db.Post, err
 		return nil, err
 	}
 
-	post, err = getAIUpdatedPost(lang, post, h.config.OpenAIKey)
+	info, err := getFoodPictureInfo(lang, post.PhotoURL, post.Text, h.config.OpenAIKey)
+	if err != nil {
+		return nil, err
+	}
+
+	post.IsSpam = info.IsSpam
+	post.DishName = &info.DishName
+
+	insights, err := getNutritionInfo(lang, formatIngredients(lang, info.Ingredients), h.config.OpenAIKey)
 
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := h.st.UpdatePostSuggestions(uid, postID, *post)
+	post.Ingredients = insights.Ingredients
+
+	var protein, fats, carbohydrates, calories int
+	for _, ingredient := range insights.Ingredients {
+		protein += int(ingredient.Macros.Proteins)
+		fats += int(ingredient.Macros.Fats)
+		carbohydrates += int(ingredient.Macros.Carbohydrates)
+		calories += int(ingredient.Calories)
+	}
+
+	post.FoodInsights = &db.FoodInsights{
+		Calories:      calories,
+		Proteins:      protein,
+		Fats:          fats,
+		Carbohydrates: carbohydrates,
+	}
+
+	res, err := h.st.UpdatePost(uid, postID, *post, nil)
 
 	if err != nil {
 		return nil, err
 	}
-
-	insights, err := getNutritionInfo(lang, formatIngredients(post.SuggestedIngredients), h.config.OpenAIKey)
-
-	if err != nil {
-		return nil, err
-	}
-
-	fi := db.FoodInsights{
-		Calories:           int(insights.Calories),
-		Carbohydrates:      int(insights.Macros.Carbs),
-		Fats:               int(insights.Macros.Fats),
-		Proteins:           int(insights.Macros.Proteins),
-		DietaryInformation: insights.DietaryInfo,
-	}
-
-	res, err = h.st.UpdatePostFoodInsights(uid, postID, fi)
 
 	return res, err
 }

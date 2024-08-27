@@ -17,9 +17,9 @@ export type Post = {
 	updated_at: string
 	hidden_at: string | null
 	photo_url: string
-	suggested_ingredients: { name: string; amount: number }[]
-	suggested_dish_name: string
-	suggested_tags: string[]
+	ingredients: { name: string; amount: number }[]
+	dish_name: string
+	tags: string[]
 	user: {
 		id: number
 		username: string
@@ -134,7 +134,7 @@ export function PostCard(props: { post: Post, class: any }) {
 			/>
 			<div class="p-3.5">
 				<p class="text-sm text-hint">
-					{props.post.text || props.post.suggested_dish_name}
+					{props.post.text || props.post.dish_name}
 				</p>
 				<div class="mt-4 flex w-full flex-row items-center justify-between">
 					<div class="flex flex-row items-center justify-start gap-2">

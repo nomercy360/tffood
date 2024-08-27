@@ -20,7 +20,7 @@ const dummyData = [
 			'last_name': null,
 			'title': null,
 		},
-		'suggested_dish_name': 'Датский сливочный рулет с клубникой',
+		'dish_name': 'Датский сливочный рулет с клубникой',
 	},
 	{
 		'id': 13,
@@ -35,7 +35,7 @@ const dummyData = [
 			'last_name': null,
 			'title': null,
 		},
-		'suggested_dish_name': 'Томатный суп',
+		'dish_name': 'Томатный суп',
 	},
 	{
 		'id': 12,
@@ -53,7 +53,7 @@ const dummyData = [
 			'last_name': null,
 			'title': null,
 		},
-		'suggested_dish_name': 'Хлеб с творогом и вареньем',
+		'dish_name': 'Хлеб с творогом и вареньем',
 	},
 ]
 

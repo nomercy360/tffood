@@ -20,9 +20,12 @@ type LanguageContent struct {
 	TagsDescription             string
 	IngredientsDescription      string
 	NutritionalPrompt           string
-	NutritionalDescription      string
 	IngredientNameDescription   string
+	IngredientListDescription   string
 	IngredientAmountDescription string
+	MacroNutrientsDescription   string
+	CaloriesDescription         string
+	NutritionIngredientWeight   string
 	Tags                        string
 }
 
@@ -35,10 +38,13 @@ func getLanguageContent(language string) LanguageContent {
 			DishDescription:             "Определенное основное блюдо на изображении.",
 			TagsDescription:             "Теги, описывающие блюдо на фото с учетом диетических предпочтений, ингредиентов или вкусовых профилей.",
 			IngredientsDescription:      "Перечисли все видимые ингредиенты и оцените приблизительное количество каждого в граммах, используя стандартные объекты на фото, такие как столовые приборы или посуда для масштабирования.",
-			NutritionalPrompt:           "Анализируем информацию о питательности продукта и предоставляем данные о калориях, макронутриентах и диетической информации.",
-			NutritionalDescription:      "Форматирует ответ анализа питательности в структурированный, читаемый формат для отображения или дальнейшей обработки. Эта функция организует полученные данные анализа питательности в разделы калорийности, макро- и микронутриентов, а также пригодности блюда для различных диет.",
+			NutritionalPrompt:           "Проанализируй информацию о питательности продукта и предоставь данные о калориях, макронутриентах и диетической информации.",
 			IngredientNameDescription:   "Название ингредиента",
 			IngredientAmountDescription: "Приблизительное количество ингредиента в граммах",
+			IngredientListDescription:   "Список ингредиентов с их питательной информацией.",
+			MacroNutrientsDescription:   "Разбивка макронутриентов в граммах для этого ингредиента.",
+			CaloriesDescription:         "Калории для этого ингредиента.",
+			NutritionIngredientWeight:   "Вес ингредиента в граммах",
 			Tags:                        "\"веган\", \"без глютена\", \"богатый белком\", \"низкоуглеводный\", \"палео\", \"без лактозы\", \"вегетарианский\", \"без сахара\", \"низкожирный\", \"средиземноморский\", \"богатый клетчаткой\"",
 		}
 	}
@@ -50,9 +56,12 @@ func getLanguageContent(language string) LanguageContent {
 		TagsDescription:             "Tags that describe the dish displayed in the photo based on dietary preferences, ingredients, or taste profiles.",
 		IngredientsDescription:      "List all visible ingredients and estimate the approximate amount of each in grams, using standard objects in the photo such as utensils or dishware for scale.",
 		NutritionalPrompt:           "Analyzing the nutritional information of the food and provide insights on the calories, macronutrients, and dietary information.",
-		NutritionalDescription:      "Formats the nutritional analysis response into a structured, readable format for display or further processing. This function takes the raw data from a nutritional analysis and organizes it into sections for calories, macronutrients, micronutrients, and dietary suitability.",
 		IngredientNameDescription:   "Name of the ingredient",
 		IngredientAmountDescription: "Approximate amount of the ingredient in grams",
+		MacroNutrientsDescription:   "Breakdown of macronutrients in grams for this ingredient.",
+		IngredientListDescription:   "List of ingredients with their nutritional information.",
+		CaloriesDescription:         "Calories for this ingredient.",
+		NutritionIngredientWeight:   "Weight of the ingredient in grams",
 		Tags:                        "\"vegan\", \"gluten-free\", \"high-protein\", \"low-carb\", \"paleo\", \"dairy-free\", \"vegetarian\", \"sugar-free\", \"low-fat\", \"mediterranean\", \"high-fiber\"",
 	}
 }
@@ -97,7 +106,7 @@ func getRequestBody(lang, imageUrl string, caption *string) string {
     "response_format": {
         "type": "json_schema",
         "json_schema": {
-            "name": "analyze_food_image",
+            "name": "food_image_analysis",
             "description": "%s",
             "strict": true,
             "schema": {
@@ -150,7 +159,7 @@ func getRequestBody(lang, imageUrl string, caption *string) string {
         }
     },
     "temperature": 0.7,
-    "max_tokens": 150,
+    "max_tokens": 200,
     "top_p": 1,
     "frequency_penalty": 0,
     "presence_penalty": 0
@@ -188,7 +197,7 @@ func nutritionRequestBody(lang, foodInfo string) string {
             "content": [
                 {
                     "type": "text",
-                    "text": "%s: %s"
+                    "text": "%s"
                 }
             ]
         }
@@ -197,65 +206,82 @@ func nutritionRequestBody(lang, foodInfo string) string {
         {
             "type": "json_schema",
             "json_schema": {
-                "name": "formatNutritionalResponse",
-                "description": "%s",
+				"name": "nutrition_info",
                 "strict": true,
                 "schema": {
                     "type": "object",
                     "properties": {
-                        "calories": {
-                            "type": "number",
-                            "description": "Total calories of the dish."
-                        },
-                        "macronutrients": {
-                            "type": "object",
-                            "description": "Breakdown of macronutrients in grams.",
-                            "properties": {
-                                "carbohydrates": {
-                                    "type": "number"
-                                },
-                                "proteins": {
-                                    "type": "number"
-                                },
-                                "fats": {
-                                    "type": "number"
-                                }
-                            },
-                            "additionalProperties": false,
-                            "required": [
-                                "carbohydrates",
-                                "proteins",
-                                "fats"
-                            ]
-                        },
-                        "dietaryInformation": {
+                        "ingredients": {
                             "type": "array",
+                            "description": "%s",
                             "items": {
-                                "type": "string"
-                            },
-                            "description": "Information on the suitability of the dish for various diets."
+                                "type": "object",
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "description": "%s"
+                                    },
+                                    "calories": {
+                                        "type": "number",
+                                        "description": "%s"
+                                    },
+									"weight": {
+										"type": "number",
+										"description": "%s"	
+									},
+                                    "macronutrients": {
+                                        "type": "object",
+                                        "description": "%s",
+                                        "properties": {
+                                            "carbohydrates": {
+                                                "type": "number"
+                                            },
+                                            "proteins": {
+                                                "type": "number"
+                                            },
+                                            "fats": {
+                                                "type": "number"
+                                            }
+                                        },
+                                        "additionalProperties": false,
+                                        "required": [
+                                            "carbohydrates",
+                                            "proteins",
+                                            "fats"
+                                        ]
+                                    }
+                                },
+                                "additionalProperties": false,
+                                "required": [
+                                    "name",
+                                    "calories",
+                                    "macronutrients",
+									"weight"
+                                ]
+                            }
                         }
                     },
                     "additionalProperties": false,
                     "required": [
-                        "calories",
-                        "macronutrients",
-                        "dietaryInformation"
+                        "ingredients"
                     ]
                 }
             }
         }
     ,
     "temperature": 0.7,
-    "max_tokens": 150,
+    "max_tokens": 300,
     "top_p": 1,
     "frequency_penalty": 0,
     "presence_penalty": 0
 }`,
 		content.NutritionalPrompt,
-		content.NutritionalPrompt,
 		foodInfo,
-		content.NutritionalDescription,
+		content.IngredientListDescription,
+		content.IngredientNameDescription,
+		content.CaloriesDescription,
+		content.NutritionIngredientWeight,
+		content.MacroNutrientsDescription,
 	)
 }
 
@@ -282,17 +308,30 @@ type OpenAIResponse struct {
 	SystemFingerprint string `json:"system_fingerprint"`
 }
 
-func formatIngredients(ingredients []db.Ingredient) string {
+type Ingredient struct {
+	Name   string  `json:"name"`
+	Amount float64 `json:"amount"`
+}
+
+func formatIngredients(lang string, ingredients []Ingredient) string {
 	var formattedIngredients string
 
 	for _, ingredient := range ingredients {
-		formattedIngredients += fmt.Sprintf("Ingredient: %s, Amount: %d grams\n", ingredient.Name, int(ingredient.Amount))
+		if lang == "ru" {
+			formattedIngredients += fmt.Sprintf("Ингредиент: %s, Количество: %d грамм.", ingredient.Name, int(ingredient.Amount))
+			continue
+		} else if lang == "en" {
+			formattedIngredients += fmt.Sprintf("Ingredient: %s, Amount: %d grams.", ingredient.Name, int(ingredient.Amount))
+			continue
+		}
 	}
 
 	formattedIngredients = strings.ReplaceAll(formattedIngredients, `"`, `\"`)
 
 	re := regexp.MustCompile(`\r?\n`)
 	formattedIngredients = re.ReplaceAllString(formattedIngredients, " ")
+	// last space is not needed
+	formattedIngredients = formattedIngredients[:len(formattedIngredients)-1]
 
 	return formattedIngredients
 }
@@ -343,20 +382,14 @@ func sendOpenAIRequest(reqBody string, token string) (*OpenAIResponse, error) {
 }
 
 type ImageRecognitionResponse struct {
-	DishName    string `json:"dish"`
-	Ingredients []db.Ingredient
-	IsSpam      bool     `json:"spam"`
-	Tags        []string `json:"tags"`
+	DishName    string       `json:"dish"`
+	Ingredients []Ingredient `json:"ingredients"`
+	IsSpam      bool         `json:"spam"`
+	Tags        []string     `json:"tags"`
 }
 
 type NutritionResponse struct {
-	Calories float32 `json:"calories"`
-	Macros   struct {
-		Proteins float32 `json:"proteins"`
-		Fats     float32 `json:"fats"`
-		Carbs    float32 `json:"carbohydrates"`
-	} `json:"macronutrients"`
-	DietaryInfo []string `json:"dietaryInformation"`
+	Ingredients []db.Ingredient `json:"ingredients"`
 }
 
 func getNutritionInfo(lang, foodInfo string, openAIKey string) (*NutritionResponse, error) {
@@ -396,11 +429,7 @@ func getNutritionInfo(lang, foodInfo string, openAIKey string) (*NutritionRespon
 		}
 	}
 
-	log.Printf("Calories: %f\n", functionResponse.Calories)
-	log.Printf("Proteins: %f\n", functionResponse.Macros.Proteins)
-	log.Printf("Fats: %f\n", functionResponse.Macros.Fats)
-	log.Printf("Carbs: %f\n", functionResponse.Macros.Carbs)
-	log.Printf("Dietary Info: %v\n", functionResponse.DietaryInfo)
+	log.Printf("Nutrition info: %v\n", functionResponse)
 
 	return &functionResponse, nil
 }

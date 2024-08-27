@@ -184,13 +184,14 @@ func (h Handler) onImageMessage(lang string, uid int64, update tgModels.Update) 
 		postWithSuggestions, err := h.runAISuggestions(lang, uid, res.ID)
 		if err != nil {
 			log.Printf("Failed to run AI suggestions: %v", err)
+			return
 		}
 
 		insights := postWithSuggestions.FoodInsights
 		var msgText string
 
-		if insights != nil && postWithSuggestions.SuggestedDishName != nil {
-			msgText = getInsightsText(lang, insights, postWithSuggestions.SuggestedDishName)
+		if insights != nil && postWithSuggestions.DishName != nil {
+			msgText = getInsightsText(lang, insights, postWithSuggestions.DishName)
 		} else {
 			msgText = messages[lang]["insightsNotFound"]
 		}

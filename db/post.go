@@ -42,28 +42,26 @@ func (up *UserProfile) Scan(src interface{}) error {
 }
 
 type Post struct {
-	ID                   int64         `db:"id" json:"id"`
-	UserID               int64         `db:"user_id" json:"user_id"`
-	Text                 *string       `db:"text" json:"text"`
-	CreatedAt            time.Time     `db:"created_at" json:"created_at"`
-	UpdatedAt            time.Time     `db:"updated_at" json:"updated_at"`
-	HiddenAt             *time.Time    `db:"hidden_at" json:"hidden_at"`
-	PhotoURL             string        `db:"photo_url" json:"photo_url"`
-	User                 UserProfile   `json:"user" db:"user"`
-	SuggestedDishName    *string       `json:"suggested_dish_name" db:"suggested_dish_name"`
-	SuggestedIngredients Ingredients   `json:"suggested_ingredients" db:"suggested_ingredients"`
-	SuggestedTags        ArrayString   `json:"suggested_tags" db:"suggested_tags"`
-	IsSpam               bool          `json:"is_spam" db:"is_spam"`
-	Tags                 TagSlice      `json:"tags" db:"tags"`
-	FoodInsights         *FoodInsights `json:"food_insights" db:"food_insights"`
+	ID           int64         `db:"id" json:"id"`
+	UserID       int64         `db:"user_id" json:"user_id"`
+	Text         *string       `db:"text" json:"text"`
+	CreatedAt    time.Time     `db:"created_at" json:"created_at"`
+	UpdatedAt    time.Time     `db:"updated_at" json:"updated_at"`
+	HiddenAt     *time.Time    `db:"hidden_at" json:"hidden_at"`
+	PhotoURL     string        `db:"photo_url" json:"photo_url"`
+	User         UserProfile   `json:"user" db:"user"`
+	DishName     *string       `json:"dish_name" db:"dish_name"`
+	Ingredients  Ingredients   `json:"ingredients" db:"ingredients"`
+	Tags         ArrayString   `json:"tags" db:"tags"`
+	IsSpam       bool          `json:"is_spam" db:"is_spam"`
+	FoodInsights *FoodInsights `json:"food_insights" db:"food_insights"`
 }
 
 type FoodInsights struct {
-	Calories           int      `json:"calories" db:"calories"`
-	Proteins           int      `json:"proteins" db:"proteins"`
-	Fats               int      `json:"fats" db:"fats"`
-	Carbohydrates      int      `json:"carbohydrates" db:"carbohydrates"`
-	DietaryInformation []string `json:"dietary_information" db:"dietary_information"`
+	Calories      int `json:"calories" db:"calories"`
+	Proteins      int `json:"proteins" db:"proteins"`
+	Fats          int `json:"fats" db:"fats"`
+	Carbohydrates int `json:"carbohydrates" db:"carbohydrates"`
 }
 
 func (fi *FoodInsights) Scan(src interface{}) error {
@@ -97,8 +95,14 @@ func (fi FoodInsights) Value() (driver.Value, error) {
 type ArrayString []string
 
 type Ingredient struct {
-	Name   string  `json:"name"`
-	Amount float64 `json:"amount"`
+	Name     string  `json:"name"`
+	Calories float64 `json:"calories"`
+	Weight   float64 `json:"weight"`
+	Macros   struct {
+		Proteins      float64 `json:"proteins"`
+		Fats          float64 `json:"fats"`
+		Carbohydrates float64 `json:"carbohydrates"`
+	} `json:"macronutrients"`
 }
 
 type Ingredients []Ingredient
@@ -190,9 +194,9 @@ func (s Storage) GetPostByID(uid, id int64) (*Post, error) {
 			   p.updated_at,
 			   p.hidden_at,
 			   p.photo_url,
-			   p.suggested_dish_name,
-			   p.suggested_ingredients,
-			   p.suggested_tags,
+			   p.dish_name,
+			   p.ingredients,
+			   p.tags,
 			   p.is_spam,
 			   p.food_insights,
 			   json_object('id', u.id, 'last_name', u.last_name, 'first_name', u.first_name, 'avatar_url', u.avatar_url, 'title',
@@ -210,9 +214,9 @@ func (s Storage) GetPostByID(uid, id int64) (*Post, error) {
 		&post.UpdatedAt,
 		&post.HiddenAt,
 		&post.PhotoURL,
-		&post.SuggestedDishName,
-		&post.SuggestedIngredients,
-		&post.SuggestedTags,
+		&post.DishName,
+		&post.Ingredients,
+		&post.Tags,
 		&post.IsSpam,
 		&post.FoodInsights,
 		&post.User,
@@ -261,9 +265,9 @@ func (s Storage) ListPosts(uid *int64, startDate, endDate time.Time) ([]Post, er
 			   p.updated_at,
 			   p.hidden_at,
 			   p.photo_url,
-			   p.suggested_dish_name,
-			   p.suggested_ingredients,
-			   p.suggested_tags,
+			   p.dish_name,
+			   p.ingredients,
+			   p.tags,
 			   p.is_spam,
 			   p.food_insights,
 			   json_object('id', u.id, 'last_name', u.last_name, 'first_name', u.first_name, 'avatar_url', u.avatar_url,
@@ -304,9 +308,9 @@ func (s Storage) ListPosts(uid *int64, startDate, endDate time.Time) ([]Post, er
 			&p.UpdatedAt,
 			&p.HiddenAt,
 			&p.PhotoURL,
-			&p.SuggestedDishName,
-			&p.SuggestedIngredients,
-			&p.SuggestedTags,
+			&p.DishName,
+			&p.Ingredients,
+			&p.Tags,
 			&p.IsSpam,
 			&p.FoodInsights,
 			&p.User,
@@ -362,40 +366,6 @@ func (s Storage) ListTags() ([]Tag, error) {
 	return tags, nil
 }
 
-func (s Storage) UpdatePostSuggestions(uid, postID int64, post Post) (*Post, error) {
-	updateQuery := `
-		UPDATE posts
-		SET suggested_dish_name = ?, suggested_ingredients = ?, suggested_tags = ?, is_spam = ?
-		WHERE id = ? AND user_id = ?
-	`
-
-	res, err := s.db.Exec(updateQuery, post.SuggestedDishName, post.SuggestedIngredients, post.SuggestedTags, post.IsSpam, postID, uid)
-	if err != nil {
-		return nil, err
-	}
-
-	if rowsAffected, _ := res.RowsAffected(); rowsAffected == 0 {
-		return nil, ErrNotFound
-	}
-
-	return s.GetPostByID(uid, postID)
-}
-
-func (s Storage) UpdatePostFoodInsights(uid, postID int64, insights FoodInsights) (*Post, error) {
-	updateQuery := `
-		UPDATE posts
-		SET food_insights = ?
-		WHERE id = ? AND user_id = ?
-	`
-
-	_, err := s.db.Exec(updateQuery, insights, postID, uid)
-	if err != nil {
-		return nil, err
-	}
-
-	return s.GetPostByID(uid, postID)
-}
-
 func (s Storage) UpdatePost(uid, postID int64, post Post, tags []int) (*Post, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -404,11 +374,12 @@ func (s Storage) UpdatePost(uid, postID int64, post Post, tags []int) (*Post, er
 
 	updateQuery := `
         UPDATE posts
-        SET text = ?, photo_url = ?, updated_at = CURRENT_TIMESTAMP, hidden_at = NULL
+        SET text = ?, photo_url = ?, updated_at = CURRENT_TIMESTAMP, hidden_at = NULL,
+            dish_name = ?, ingredients = ?, is_spam = ?, food_insights = ?
         WHERE id = ? AND user_id = ?
     `
 
-	_, err = tx.Exec(updateQuery, post.Text, post.PhotoURL, postID, uid)
+	_, err = tx.Exec(updateQuery, post.Text, post.PhotoURL, post.DishName, post.Ingredients, post.IsSpam, post.FoodInsights, postID, uid)
 	if err != nil {
 		tx.Rollback()
 		return nil, err

@@ -30,9 +30,9 @@ func (s Storage) Migrate() error {
 		    hidden_at TIMESTAMP,
 		    photo_url TEXT,
 		    is_spam BOOLEAN NOT NULL DEFAULT FALSE,
-		    suggested_dish_name TEXT,
-		    suggested_ingredients TEXT,
-		    suggested_tags TEXT,
+		    dish_name TEXT,
+		    ingredients TEXT,
+		    tags TEXT,
 		    food_insights TEXT,
 		    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 		);
