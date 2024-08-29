@@ -1,0 +1,48 @@
+{
+  "back": "Back",
+  "app_name": "WELLIE.AI",
+  "age": {
+    "question": "What is your age?",
+    "description": "Select or type your age."
+  },
+  "weight": {
+    "question": "What is your weight?",
+    "description": "Select or type your weight. You can also use lbs."
+  },
+  "height": {
+    "question": "What is your height?",
+    "description": "Select or type your height."
+  },
+  "body_fat": {
+    "question": "What is your body fat?",
+    "description": "Select or type your body fat percentage."
+  },
+  "goals": {
+    "question": "What are your goals?",
+    "description": "Select what you want to achieve with your fitness.",
+    "options": {
+      "gain_muscles": {
+        "title": "Gain muscles",
+        "description": "Wishd is made for friends. Search for people you know or share your link, so they can find you."
+      },
+      "lose_weight": {
+        "title": "Loose weight",
+        "description": "Wishd is made for friends. Search for people you know or share your link, so they can find you."
+      },
+      "track_nutrition": {
+        "title": "Track nutrition",
+        "description": "Wishd is made for friends. Search for people you know or share your link, so they can find you."
+      },
+      "improve_health": {
+        "title": "Improve health",
+        "description": "Wishd is made for friends. Search for people you know or share your link, so they can find you."
+      },
+      "count_calories": {
+        "title": "Count calories",
+        "description": "Wishd is made for friends. Search for people you know or share your link, so they can find you."
+      }
+    }
+  },
+  "continue_button": "Continue",
+  "save_button": "Save"
+}

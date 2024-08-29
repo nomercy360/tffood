@@ -60,8 +60,9 @@ export async function fetchPosts() {
 	return response as any
 }
 
-export async function fetchFoodInsights() {
-	const response = await apiFetch({ endpoint: '/food-insights' })
+export async function fetchFoodInsights(date: Date) {
+	const response = await apiFetch({ endpoint: `/food-insights?date=${date.toISOString()}` })
+
 	return response as any
 }
 
@@ -123,6 +124,12 @@ export async function fetchTags() {
 	return response as any
 }
 
-export async function fetchSubmitJoinRequest() {
-	await apiFetch({ endpoint: '/community/join', method: 'POST' })
+export async function fetchSaveUserOnboardData(data: any) {
+	const response = await apiFetch({
+		endpoint: '/user/onboard',
+		method: 'PUT',
+		body: data,
+	})
+
+	return response as any
 }

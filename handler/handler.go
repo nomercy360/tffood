@@ -26,7 +26,8 @@ type storage interface {
 	UpdateUserAvatarURL(uid int64, url string) error
 	DeleteUserByID(uid int64) error
 	UpdateUser(uid int64, user db.User) (*db.User, error)
-	UpdateUserRequestToJoin(uid int64) error
+	StoreMessageID(chatID, entityID int64, messageID int) error
+	GetLastMessageID(chatID, entityID int64) (*int64, error)
 }
 
 type Handler struct {

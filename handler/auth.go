@@ -137,16 +137,48 @@ func (h Handler) UpdateUserSettings(c echo.Context) error {
 	return c.JSON(http.StatusOK, updated)
 }
 
-func (h Handler) SubmitJoinCommunityRequest(c echo.Context) error {
+type UpdateUserOnboardingRequest struct {
+	Age           int     `json:"age" required:"true"`
+	Weight        float64 `json:"weight" required:"true"`
+	Height        int     `json:"height" required:"true"`
+	Goal          string  `json:"goal" required:"true"`
+	FatPercentage float64 `json:"fat_percentage" required:"true"`
+	Gender        string  `json:"gender" required:"true"`
+}
+
+func (h Handler) UpdateUserOnboarding(c echo.Context) error {
 	uid := getUserID(c)
 
-	err := h.st.UpdateUserRequestToJoin(uid)
+	user, err := h.st.GetUserByID(db.UserQuery{ID: uid})
 
 	if err != nil && errors.Is(err, db.ErrNotFound) {
-		return terrors.NotFound(err, "not found")
+		return terrors.NotFound(err, "user not found")
 	} else if err != nil {
+		return terrors.InternalServerError(err, "failed to get user")
+	}
+
+	var req UpdateUserOnboardingRequest
+
+	if err := c.Bind(&req); err != nil {
+		return terrors.BadRequest(err, "failed to bind request")
+	}
+
+	if err := c.Validate(req); err != nil {
+		return terrors.BadRequest(err, "failed to validate request")
+	}
+
+	user.Age = &req.Age
+	user.Weight = &req.Weight
+	user.Height = &req.Height
+	user.Goal = &req.Goal
+	user.FatPercentage = &req.FatPercentage
+	user.Gender = &req.Gender
+
+	updated, err := h.st.UpdateUser(uid, *user)
+
+	if err != nil {
 		return terrors.InternalServerError(err, "failed to update user")
 	}
 
-	return c.NoContent(http.StatusNoContent)
+	return c.JSON(http.StatusOK, updated)
 }

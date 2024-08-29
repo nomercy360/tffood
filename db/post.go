@@ -278,7 +278,7 @@ func (s Storage) ListPosts(uid *int64, startDate, endDate time.Time) ([]Post, er
 				 JOIN users u ON p.user_id = u.id
 				 LEFT JOIN post_tags pt ON p.id = pt.post_id
 				 LEFT JOIN tags t ON pt.tag_id = t.id
-		WHERE p.created_at BETWEEN ? AND ?
+		WHERE p.created_at BETWEEN ? AND ? AND p.hidden_at IS NULL
 	`
 
 	if uid != nil {

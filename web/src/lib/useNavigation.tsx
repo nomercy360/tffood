@@ -37,7 +37,7 @@ export function NavigationProvider(props: { children: any }) {
 
 	createEffect(() => {
 		backButton.hide()
-		if (location.pathname !== '/') {
+		if (location.pathname !== '/' && location.pathname !== '/onboard') {
 			backButton.setVisible()
 			backButton.onClick(navigateBack)
 		}

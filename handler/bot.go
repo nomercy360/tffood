@@ -123,17 +123,18 @@ func (h Handler) HandleWebhook(c echo.Context) error {
 
 		log.Printf("User %d already exists, sending message", user.ChatID)
 
-		msg := &telegram.SendMessageParams{
-			ChatID:    update.Message.Chat.ID,
-			ParseMode: "Markdown",
-		}
+		var msg telegram.SendMessageParams
+		entityID := user.ID
 
 		if update.Message.Photo != nil && len(update.Message.Photo) > 0 {
-			if err := h.onImageMessage(lang, user.ID, update); err != nil {
+			postID, err := h.onImageMessage(lang, user.ID, update)
+
+			if err != nil {
 				log.Printf("Failed to process image from telegram. User: %d, Error: %v", user.ID, err)
 				msg.Text = messages[lang]["uploadError"]
 			} else {
 				msg.Text = messages[lang]["gettingInsights"]
+				entityID = *postID
 			}
 
 		} else if update.Message.Document != nil {
@@ -143,7 +144,7 @@ func (h Handler) HandleWebhook(c echo.Context) error {
 			msg.ReplyMarkup = &webApp
 		}
 
-		if _, err := h.tg.SendMessage(context.Background(), msg); err != nil {
+		if err := h.sendMessage(entityID, update.Message.Chat.ID, &msg); err != nil {
 			log.Printf("Failed to send message: %v", err)
 			return c.NoContent(http.StatusOK)
 		}
@@ -152,7 +153,42 @@ func (h Handler) HandleWebhook(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
-func (h Handler) onImageMessage(lang string, uid int64, update tgModels.Update) error {
+func (h Handler) sendMessage(id, chatID int64, msg *telegram.SendMessageParams) error {
+	msg.ChatID = chatID
+	msg.ParseMode = "Markdown"
+
+	resp, err := h.tg.SendMessage(context.Background(), msg)
+
+	if err != nil {
+		return err
+	}
+
+	msgId := resp.ID
+
+	if err := h.st.StoreMessageID(chatID, id, msgId); err != nil {
+		log.Printf("Failed to store message ID: %v", err)
+	}
+
+	return nil
+}
+
+func (h Handler) editMessage(chatID int64, messageID int, newText string) error {
+	params := &telegram.EditMessageTextParams{
+		ChatID:    chatID,
+		MessageID: messageID,
+		Text:      newText,
+		ParseMode: "Markdown",
+	}
+
+	_, err := h.tg.EditMessageText(context.Background(), params)
+	if err != nil {
+		log.Printf("Failed to edit message: %v", err)
+		return err
+	}
+	return nil
+}
+
+func (h Handler) onImageMessage(lang string, uid int64, update tgModels.Update) (*int64, error) {
 	// find the most quality photo
 	photo := update.Message.Photo[len(update.Message.Photo)-1]
 
@@ -176,7 +212,7 @@ func (h Handler) onImageMessage(lang string, uid int64, update tgModels.Update) 
 	res, err := h.st.CreatePost(uid, post)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// run AI model in the background
@@ -196,18 +232,22 @@ func (h Handler) onImageMessage(lang string, uid int64, update tgModels.Update) 
 			msgText = messages[lang]["insightsNotFound"]
 		}
 
-		msg := telegram.SendMessageParams{
-			ChatID:    update.Message.Chat.ID,
-			Text:      msgText,
-			ParseMode: "Markdown",
+		prevMsgID, err := h.st.GetLastMessageID(update.Message.Chat.ID, res.ID)
+
+		if err != nil && errors.Is(err, db.ErrNotFound) {
+			log.Printf("Message ID not found for chat %d and post %d", update.Message.Chat.ID, res.ID)
+			return
+		} else if err != nil {
+			log.Printf("Failed to get last message ID: %v", err)
+			return
 		}
 
-		if _, err := h.tg.SendMessage(context.Background(), &msg); err != nil {
-			log.Printf("Failed to send message: %v", err)
+		if err = h.editMessage(update.Message.Chat.ID, int(*prevMsgID), msgText); err != nil {
+			log.Printf("Failed to edit message: %v", err)
 		}
 	}()
 
-	return nil
+	return &res.ID, nil
 }
 
 func (h Handler) handlePhotoUpload(uid int64, photo tgModels.PhotoSize) (*string, error) {

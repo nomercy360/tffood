@@ -16,8 +16,12 @@ func (s Storage) Migrate() error {
 		    notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
 		    avatar_url TEXT,
 		    title TEXT,
-		    request_to_join_at TIMESTAMP DEFAULT NULL,
-		    community_status TEXT NOT NULL DEFAULT 'none',
+		    age INTEGER,
+		    weight DECIMAL(5, 2),
+		    height INTEGER,
+		    fat_percentage DECIMAL(5, 2),
+		    goal TEXT,
+		    gender TEXT,
 		    UNIQUE (chat_id)
 		);
 
@@ -60,6 +64,7 @@ func (s Storage) Migrate() error {
 		    id INTEGER PRIMARY KEY,
 		    name TEXT NOT NULL,
 		    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		    language TEXT NOT NULL DEFAULT 'en',
 		    UNIQUE (name)       
 		);
 
@@ -74,6 +79,14 @@ func (s Storage) Migrate() error {
 		INSERT INTO tags (name) VALUES 
 		('Keto'), ('Breakfast'), ('Lunch'), ('Dinner'), ('Snack'), ('Vegetarian'), ('Vegan')
 		ON CONFLICT DO NOTHING;
+
+		CREATE TABLE IF NOT EXISTS bot_messages (
+			id INTEGER PRIMARY KEY,
+			chat_id INTEGER NOT NULL,
+			message_id INTEGER NOT NULL,
+			entity_id INTEGER NOT NULL,
+			sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+		);
  	`
 
 	if _, err := s.db.Exec(createTableQuery); err != nil {

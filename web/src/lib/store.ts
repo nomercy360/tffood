@@ -5,8 +5,12 @@ type User = {
 	username: string;
 	language: string;
 	notifications_enabled: boolean;
-	community_status: string;
-	request_to_join_at: string;
+	age: number;
+	weight: number;
+	height: number;
+	fat_percentage: number;
+	goal: string;
+	gender: string;
 }
 
 type AuthStore = {

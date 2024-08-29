@@ -36,20 +36,37 @@ func (h Handler) GetPosts(c echo.Context) error {
 	return c.JSON(http.StatusOK, posts)
 }
 
+type Goal string
+
+const (
+	GainMuscles Goal = "gain_muscles"
+	LoseWeight  Goal = "lose_weight"
+)
+
 func (h Handler) GetFoodInsightsHandler(c echo.Context) error {
 	uid := getUserID(c)
-	end := time.Now()
-	// one week ago
-	start := end.AddDate(0, 0, -7)
+	endString := c.QueryParam("date")
 
-	posts, err := h.st.ListPosts(&uid, start, end)
+	if endString == "" {
+		endString = time.Now().Format("2006-01-02T15:04:05Z")
+	}
+
+	end, err := time.Parse("2006-01-02T15:04:05Z", endString)
 	if err != nil {
 		return err
 	}
 
-	dayOrder := []string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"}
-	caloricBreakdown := map[string]int{
-		"Mon": 0, "Tue": 0, "Wed": 0, "Thu": 0, "Fri": 0, "Sat": 0, "Sun": 0,
+	// 00:00:00 of the end date
+	start := time.Date(end.Year(), end.Month(), end.Day(), 0, 0, 0, 0, end.Location())
+
+	user, err := h.st.GetUserByID(db.UserQuery{ID: uid})
+	if err != nil {
+		return err
+	}
+
+	posts, err := h.st.ListPosts(&uid, start, end)
+	if err != nil {
+		return err
 	}
 
 	macros := map[string]int{
@@ -59,23 +76,41 @@ func (h Handler) GetFoodInsightsHandler(c echo.Context) error {
 	}
 
 	for _, post := range posts {
-		day := post.CreatedAt.Weekday().String()[:3] // Get short weekday name
 		if post.FoodInsights != nil {
-			caloricBreakdown[day] += post.FoodInsights.Calories
 			macros["proteins"] += post.FoodInsights.Proteins
 			macros["fats"] += post.FoodInsights.Fats
 			macros["carbohydrates"] += post.FoodInsights.Carbohydrates
 		}
 	}
 
-	orderedCaloricBreakdown := make([]int, len(dayOrder))
-	for i, day := range dayOrder {
-		orderedCaloricBreakdown[i] = caloricBreakdown[day]
+	caloriesConsumed := macros["proteins"]*4 + macros["fats"]*9 + macros["carbohydrates"]*4
+
+	genderFemale := "Female"
+
+	// Calculate BMR based on user details
+	bmr := 88.362 + (13.397 * *user.Weight) + (4.799 * float64(*user.Height)) - (5.677 * float64(*user.Age))
+	if user.Gender == &genderFemale {
+		bmr = 447.593 + (9.247 * *user.Weight) + (3.098 * float64(*user.Height)) - (4.330 * float64(*user.Age))
 	}
 
+	// Adjust BMR based on activity level and goals
+	// For example, if activityLevel is 1.2 and user's goal is to lose weight, decrease by 15%
+	activityLevel := 1.2 // This should be fetched or calculated based on user input
+	calorieNeeds := bmr * activityLevel
+	switch *user.Goal {
+	case "gain_muscles":
+		calorieNeeds *= 1.2
+	case "lose_weight":
+		calorieNeeds *= 0.85
+	}
+
+	caloriesLeft := int(calorieNeeds) - caloriesConsumed
+
 	response := map[string]interface{}{
-		"caloric_breakdown": orderedCaloricBreakdown,
 		"macros":            macros,
+		"calories_left":     caloriesLeft,
+		"calorie_needs":     int(calorieNeeds),
+		"calories_consumed": caloriesConsumed,
 	}
 
 	return c.JSON(http.StatusOK, response)

@@ -1,13 +1,12 @@
-import { For, Match, onCleanup, onMount, Show, Switch } from 'solid-js'
+import { createSignal, For, Match, onCleanup, onMount, Show, Switch } from 'solid-js'
 import { cn, timeSince } from '~/lib/utils'
 import { useMainButton } from '~/lib/useMainButton'
-import { useNavigate } from '@solidjs/router'
+import { Navigate, useNavigate } from '@solidjs/router'
 import { fetchPosts } from '~/lib/api'
 import { createQuery } from '@tanstack/solid-query'
 import { Link } from '~/components/link'
 import { IconInfo, IconShare } from '~/components/icons'
 import { store } from '~/lib/store'
-import JoinCommunity from '~/components/join-community'
 
 export type Post = {
 	id: number
@@ -17,7 +16,7 @@ export type Post = {
 	updated_at: string
 	hidden_at: string | null
 	photo_url: string
-	ingredients: { name: string; amount: number }[]
+	ingredients: { name: string; weight: number }[]
 	dish_name: string
 	tags: string[]
 	user: {
@@ -37,13 +36,17 @@ export type Post = {
 }
 
 export default function HomePage() {
+	const isOnboarded = () => {
+		return store.user.age && store.user.weight && store.user.height && store.user.fat_percentage && store.user.goal && store.user.gender
+	}
+
 	return (
 		<Switch>
-			<Match when={store.user.community_status == 'member'}>
+			<Match when={isOnboarded()}>
 				<Feed />
 			</Match>
-			<Match when={store.user.community_status == 'none'}>
-				<JoinCommunity />
+			<Match when={!isOnboarded()}>
+				<Navigate href="/onboard" />
 			</Match>
 		</Switch>
 	)
@@ -55,31 +58,26 @@ function Feed() {
 		queryFn: () => fetchPosts(),
 	}))
 
-	const mainButton = useMainButton()
-	const navigate = useNavigate()
-
-	function navigateToPost() {
-		navigate('/post')
-	}
-
-	onMount(() => {
-		mainButton.enable('Post Food').onClick(navigateToPost)
-	})
-
-	onCleanup(() => {
-		mainButton.offClick(navigateToPost)
-		mainButton.hide()
-	})
-
 	return (
 		<section class="p-4">
-			<div class="grid gap-2">
-				<Show when={query.isSuccess} fallback={<Loader />}>
-					<For each={query.data as Post[]}>
-						{(item) => (<PostCard post={item} class="" />)}
-					</For>
-				</Show>
-			</div>
+			<Show when={query.isSuccess} fallback={<Loader />}>
+				<div class="grid grid-cols-2 gap-1.5">
+					<div class="flex flex-col space-y-1.5">
+						<For each={query.data.filter((_: any, index: number) => index % 2 === 0) as Post[]}>
+							{(item) => (
+								<PostCard post={item} class="" />
+							)}
+						</For>
+					</div>
+					<div class="flex flex-col space-y-1.5">
+						<For each={query.data.filter((_: any, index: number) => index % 2 !== 0) as Post[]}>
+							{(item) => (
+								<PostCard post={item} class="" />
+							)}
+						</For>
+					</div>
+				</div>
+			</Show>
 		</section>
 	)
 }
@@ -95,67 +93,20 @@ function Loader() {
 	)
 }
 
-export function UserProfileLink(props: { class: any; user: Post['user'] }) {
+export function PostCard(props: { post: Post; class: any }) {
 	return (
-		<Link
-			class={cn('flex flex-row items-center justify-start gap-2', props.class)}
-			href={`/users/${props.user.username}`}
-		>
-			<img src={props.user.avatar_url} class="size-8 rounded-full" alt="User" />
-			<div class="flex flex-col items-start justify-start">
-				<p class="text-sm font-semibold text-hint">@{props.user.username}</p>
-				<p class="text-sm font-semibold text-foreground">
-					{props.user?.first_name} {props.user?.last_name}
-				</p>
+		<Link href={`/posts/${props.post.id}`}>
+			<div class="relative">
+				<div class="absolute left-2 top-2">
+					<img src={props.post.user.avatar_url} class="size-8 rounded-full" alt="Avatar" />
+				</div>
+				<img
+					src={props.post.photo_url}
+					class="h-auto w-full rounded-[20px] border object-cover"
+					alt="Thumbnail"
+					loading="lazy"
+				/>
 			</div>
 		</Link>
-	)
-}
-
-export function PostCard(props: { post: Post, class: any }) {
-	function sharePostURl(postID: string) {
-		const url =
-			'https://t.me/share/url?' +
-			new URLSearchParams({
-				url: 'https://t.me/eatzfood_bot/app?startapp=p' + postID,
-			}).toString() +
-			'&text=Check out this post'
-
-		window.Telegram.WebApp.openTelegramLink(url)
-	}
-
-	return (
-		<div class={cn('rounded-lg border bg-section', props.class)}>
-			<UserProfileLink user={props.post.user} class="p-4" />
-			<img
-				src={props.post.photo_url}
-				class="aspect-[4/3] w-full object-cover"
-				alt="Thumbnail"
-			/>
-			<div class="p-3.5">
-				<p class="text-sm text-hint">
-					{props.post.text || props.post.dish_name}
-				</p>
-				<div class="mt-4 flex w-full flex-row items-center justify-between">
-					<div class="flex flex-row items-center justify-start gap-2">
-						<button
-							class="flex size-8 flex-row items-center justify-center gap-1.5 rounded-lg"
-							onClick={() => sharePostURl(props.post.id.toString())}
-						>
-							<IconShare class="size-5" />
-						</button>
-						<Link
-							class="flex size-8 flex-row items-center justify-center gap-1.5 rounded-lg"
-							href={`/posts/${props.post.id}`}
-						>
-							<IconInfo class="size-5" />
-						</Link>
-					</div>
-					<span class="text-xs text-hint">
-						{timeSince(props.post.created_at)}
-					</span>
-				</div>
-			</div>
-		</div>
 	)
 }
