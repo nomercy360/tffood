@@ -103,7 +103,7 @@ export function PostCard(props: { post: Post; class: any }) {
 	return (
 		<Link href={`/posts/${props.post.id}`}>
 			<div class="relative">
-				<div class="absolute left-2 top-2 z-50">
+				<div class="absolute left-2 top-2 z-30">
 					<Image src={props.post.user.avatar_url}
 								 class="size-8 rounded-full" alt="Avatar"
 					/>

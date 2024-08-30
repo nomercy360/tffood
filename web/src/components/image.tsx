@@ -20,7 +20,7 @@ const Image = (props: { src: string; alt: string, class: string }) => {
 				alt={props.alt}
 				class={cn('h-auto w-full object-cover transition-opacity duration-500',
 					props.class,
-					loading() ? 'opacity-0' : 'opacity-100')
+					loading() ? 'opacity-0 min-h-40' : 'opacity-100')
 				}
 				loading="lazy"
 				onLoad={handleImageLoad}
