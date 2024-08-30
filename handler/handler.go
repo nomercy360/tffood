@@ -20,7 +20,7 @@ type storage interface {
 	CreateUser(user db.User) (*db.User, error)
 	CreatePost(uid int64, post db.Post) (*db.Post, error)
 	UpdatePost(uid, postID int64, post db.Post, tags []int) (*db.Post, error)
-	ListPosts(uid *int64, startDate, endDate time.Time) ([]db.Post, error)
+	ListPosts(params db.ListPostsParams) ([]db.Post, error)
 	GetPostByID(uid, id int64) (*db.Post, error)
 	ListTags() ([]db.Tag, error)
 	UpdateUserAvatarURL(uid int64, url string) error
@@ -28,6 +28,7 @@ type storage interface {
 	UpdateUser(uid int64, user db.User) (*db.User, error)
 	StoreMessageID(chatID, entityID int64, messageID int) error
 	GetLastMessageID(chatID, entityID int64) (*int64, error)
+	UpdatePostHiddenAt(uid, postID int64, hiddenAt *time.Time) error
 }
 
 type Handler struct {

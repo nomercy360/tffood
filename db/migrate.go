@@ -20,6 +20,7 @@ func (s Storage) Migrate() error {
 		    weight DECIMAL(5, 2),
 		    height INTEGER,
 		    fat_percentage DECIMAL(5, 2),
+		    activity_level TEXT,
 		    goal TEXT,
 		    gender TEXT,
 		    UNIQUE (chat_id)

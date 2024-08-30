@@ -24,6 +24,15 @@ type User struct {
 	Gender               *string   `db:"gender" json:"gender"`
 }
 
+func (u User) GetUserLanguage() string {
+	lang := "en"
+	if u.LanguageCode != nil && *u.LanguageCode == "ru" {
+		lang = "ru"
+	}
+
+	return lang
+}
+
 type UserQuery struct {
 	ChatID int64
 	ID     int64

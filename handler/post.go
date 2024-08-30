@@ -27,7 +27,7 @@ func (h Handler) GetPosts(c echo.Context) error {
 	end := time.Now()
 	start := end.AddDate(0, -1, 0)
 
-	posts, err := h.st.ListPosts(nil, start, end)
+	posts, err := h.st.ListPosts(db.ListPostsParams{StartDate: start, EndDate: end})
 
 	if err != nil {
 		return err
@@ -64,7 +64,7 @@ func (h Handler) GetFoodInsightsHandler(c echo.Context) error {
 		return err
 	}
 
-	posts, err := h.st.ListPosts(&uid, start, end)
+	posts, err := h.st.ListPosts(db.ListPostsParams{UserID: &uid, StartDate: start, EndDate: end})
 	if err != nil {
 		return err
 	}
@@ -125,6 +125,34 @@ type UpdatePostRequest struct {
 	Text  *string `json:"text"`
 	Tags  []int   `json:"tags"`
 	Photo string  `json:"photo" validate:"required"`
+}
+
+func (h Handler) RerunAllPostsImageRecognition(c echo.Context) error {
+	now := time.Now()
+	// 1 year ago
+	start := now.AddDate(-1, 0, 0)
+	showHidden := true
+
+	params := db.ListPostsParams{
+		StartDate:  start,
+		EndDate:    now,
+		ShowHidden: &showHidden,
+	}
+
+	posts, err := h.st.ListPosts(params)
+	if err != nil {
+		return err
+	}
+
+	for _, post := range posts {
+		go func(post db.Post) {
+			if _, err := h.runAISuggestions("en", post.UserID, post.ID); err != nil {
+				log.Printf("Failed to run AI suggestions: %v", err)
+			}
+		}(post)
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (h Handler) CreatePost(c echo.Context) error {

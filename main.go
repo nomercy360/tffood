@@ -126,7 +126,7 @@ func getAuthConfig(secret string) echojwt.Config {
 
 func main() {
 	e := echo.New()
-	e.Use(middleware.Recover())
+	//e.Use(middleware.Recover())
 
 	cfg := config.Default{}
 	if err := env.Parse(&cfg); err != nil {
@@ -196,6 +196,7 @@ func main() {
 	g.POST("/presigned-url", h.GetPresignedURL)
 	g.PUT("/user/settings", h.UpdateUserSettings)
 	g.PUT("/user/onboard", h.UpdateUserOnboarding)
+	g.GET("/posts/rerun", h.RerunAllPostsImageRecognition)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()

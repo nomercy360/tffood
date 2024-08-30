@@ -12,29 +12,37 @@ import (
 	nanoid "github.com/matoous/go-nanoid"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"rednit/db"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var messages = map[string]map[string]string{
 	"en": {
-		"welcome":          "This bot will help you track your meals and get insights about your nutrition.\nTry sending a photo",
-		"openWebApp":       "You can open the web app by tapping the button below.",
-		"gettingInsights":  "Getting insights from the image...",
-		"photoAddError":    "Please send the picture as a 'Photo', not as a 'File'.",
-		"uploadError":      "Failed to upload the image. Please try again.",
-		"insightsNotFound": "No insights found for this image.",
+		"welcome":            "This bot will help you track your meals and get insights about your nutrition.\nTry sending a photo",
+		"openWebApp":         "You can open the web app by tapping the button below.",
+		"gettingInsights":    "Getting insights from the image...",
+		"photoAddError":      "Please send the picture as a 'Photo', not as a 'File'.",
+		"uploadError":        "Failed to upload the image. Please try again.",
+		"insightsNotFound":   "No insights found for this image.",
+		"openApp":            "Open",
+		"checkInApp":         "Check the insights in the app",
+		"shareWithCommunity": "Share with community",
 	},
 	"ru": {
-		"welcome":          "Этот бот поможет вам отслеживать приемы пищи и получать информацию о вашем питании.\nПопробуй отправить фото",
-		"openWebApp":       "Вы можете открыть веб-приложение, нажав на кнопку ниже.",
-		"gettingInsights":  "Обрабатка в процессе...",
-		"photoAddError":    "Пожалуйста, отправьте изображение как 'Фото', а не как 'Файл'.",
-		"uploadError":      "Не удалось загрузить изображение. Пожалуйста, попробуйте еще раз.",
-		"insightsNotFound": "Для этого изображения не найдено данных.",
+		"welcome":            "Этот бот поможет вам отслеживать приемы пищи и получать информацию о вашем питании.\nПопробуй отправить фото",
+		"openWebApp":         "Вы можете открыть веб-приложение, нажав на кнопку ниже.",
+		"gettingInsights":    "Обрабатка в процессе...",
+		"photoAddError":      "Пожалуйста, отправьте изображение как 'Фото', а не как 'Файл'.",
+		"uploadError":        "Не удалось загрузить изображение. Пожалуйста, попробуйте еще раз.",
+		"insightsNotFound":   "Для этого изображения не найдено данных.",
+		"openApp":            "Открыть",
+		"checkInApp":         "Проверьте результат в приложении",
+		"shareWithCommunity": "Поделиться с сообществом",
 	},
 }
 
@@ -54,8 +62,19 @@ func (h Handler) HandleWebhook(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "Invalid update")
 	}
 
-	if update.Message == nil {
-		return c.String(http.StatusBadRequest, "No message")
+	var chatID int64
+
+	if update.CallbackQuery != nil {
+		chatID = update.CallbackQuery.Message.Message.Chat.ID
+		if err := h.handleCallbackQuery(update); err != nil {
+			log.Printf("Failed to handle callback query: %v", err)
+		}
+
+		return c.NoContent(http.StatusOK)
+	} else if update.Message != nil {
+		chatID = update.Message.Chat.ID
+	} else {
+		return c.String(http.StatusBadRequest, "Invalid update")
 	}
 
 	if update.Message.Chat.Type != "private" {
@@ -64,11 +83,11 @@ func (h Handler) HandleWebhook(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	}
 
-	user, err := h.st.GetUserByID(db.UserQuery{ChatID: update.Message.Chat.ID})
+	user, err := h.st.GetUserByID(db.UserQuery{ChatID: chatID})
 
 	if update.Message.Text == "/reset" && user != nil {
 		msg := telegram.SendMessageParams{
-			ChatID: update.Message.Chat.ID,
+			ChatID: chatID,
 		}
 
 		if err := h.st.DeleteUserByID(user.ID); err != nil {
@@ -94,7 +113,7 @@ func (h Handler) HandleWebhook(c echo.Context) error {
 	}
 
 	if err != nil && errors.Is(err, db.ErrNotFound) {
-		log.Printf("User %d not found, creating new user", update.Message.Chat.ID)
+		log.Printf("User %d not found, creating new user", chatID)
 
 		user = h.createUser(update)
 		if user == nil {
@@ -103,23 +122,20 @@ func (h Handler) HandleWebhook(c echo.Context) error {
 
 		msg := messages[*user.LanguageCode]["welcome"]
 
-		params := &telegram.SendMessageParams{ChatID: update.Message.Chat.ID, Text: msg, ReplyMarkup: &webApp, ParseMode: "Markdown"}
+		params := &telegram.SendMessageParams{ChatID: chatID, Text: msg, ReplyMarkup: &webApp, ParseMode: "Markdown"}
 
 		if _, err := h.tg.SendMessage(context.Background(), params); err != nil {
 			log.Printf("Failed to send message: %v", err)
 			return c.NoContent(http.StatusOK)
 		}
 
-		go h.setMenuButton(update.Message.Chat.ID)
+		go h.setMenuButton(chatID)
 
 	} else if err != nil {
 		log.Printf("Failed to get user: %v", err)
 		return c.NoContent(http.StatusOK)
 	} else if user != nil {
-		lang := "en"
-		if user.LanguageCode != nil && *user.LanguageCode == "ru" {
-			lang = "ru"
-		}
+		lang := user.GetUserLanguage()
 
 		log.Printf("User %d already exists, sending message", user.ChatID)
 
@@ -144,13 +160,63 @@ func (h Handler) HandleWebhook(c echo.Context) error {
 			msg.ReplyMarkup = &webApp
 		}
 
-		if err := h.sendMessage(entityID, update.Message.Chat.ID, &msg); err != nil {
+		if err := h.sendMessage(entityID, chatID, &msg); err != nil {
 			log.Printf("Failed to send message: %v", err)
 			return c.NoContent(http.StatusOK)
 		}
 	}
 
 	return c.NoContent(http.StatusOK)
+}
+
+func (h Handler) handleCallbackQuery(update tgModels.Update) error {
+	callbackData := update.CallbackQuery.Data
+	chatID := update.CallbackQuery.Message.Message.Chat.ID
+	messageID := update.CallbackQuery.Message.Message.ID
+
+	user, err := h.st.GetUserByID(db.UserQuery{ChatID: chatID})
+	if err != nil {
+		log.Printf("Failed to get user: %v", err)
+		return err
+	}
+
+	lang := user.GetUserLanguage()
+
+	if strings.HasPrefix(callbackData, "share_") {
+		postIDStr := strings.TrimPrefix(callbackData, "share_")
+		postID, err := strconv.ParseInt(postIDStr, 10, 64)
+		if err != nil {
+			log.Printf("Invalid post ID: %v", err)
+			return err
+		}
+
+		err = h.st.UpdatePostHiddenAt(user.ID, postID, nil)
+		if err != nil {
+			log.Printf("Failed to update post sharing status: %v", err)
+			return err
+		}
+
+		linkToPost := fmt.Sprintf("%s?startapp=p%d", h.config.BotWebAppURL, postID)
+
+		newMsg := &telegram.EditMessageTextParams{
+			ChatID:    chatID,
+			MessageID: messageID,
+			Text:      messages[lang]["checkInApp"],
+			ReplyMarkup: &tgModels.InlineKeyboardMarkup{
+				InlineKeyboard: [][]tgModels.InlineKeyboardButton{
+					{
+						{Text: messages[lang]["openApp"], URL: linkToPost},
+					},
+				},
+			},
+		}
+
+		if err = h.editMessage(chatID, messageID, newMsg); err != nil {
+			log.Printf("Failed to edit message: %v", err)
+		}
+	}
+
+	return nil
 }
 
 func (h Handler) sendMessage(id, chatID int64, msg *telegram.SendMessageParams) error {
@@ -172,15 +238,12 @@ func (h Handler) sendMessage(id, chatID int64, msg *telegram.SendMessageParams) 
 	return nil
 }
 
-func (h Handler) editMessage(chatID int64, messageID int, newText string) error {
-	params := &telegram.EditMessageTextParams{
-		ChatID:    chatID,
-		MessageID: messageID,
-		Text:      newText,
-		ParseMode: "Markdown",
-	}
+func (h Handler) editMessage(chatID int64, messageID int, newMsg *telegram.EditMessageTextParams) error {
+	newMsg.ChatID = chatID
+	newMsg.MessageID = messageID
+	newMsg.ParseMode = "Markdown"
 
-	_, err := h.tg.EditMessageText(context.Background(), params)
+	_, err := h.tg.EditMessageText(context.Background(), newMsg)
 	if err != nil {
 		log.Printf("Failed to edit message: %v", err)
 		return err
@@ -242,7 +305,19 @@ func (h Handler) onImageMessage(lang string, uid int64, update tgModels.Update) 
 			return
 		}
 
-		if err = h.editMessage(update.Message.Chat.ID, int(*prevMsgID), msgText); err != nil {
+		newMsg := &telegram.EditMessageTextParams{
+			Text: msgText,
+			ReplyMarkup: &tgModels.InlineKeyboardMarkup{
+				InlineKeyboard: [][]tgModels.InlineKeyboardButton{
+					{
+						{Text: messages[lang]["shareWithCommunity"],
+							CallbackData: fmt.Sprintf("share_%d", res.ID)},
+					},
+				},
+			},
+		}
+
+		if err = h.editMessage(update.Message.Chat.ID, int(*prevMsgID), newMsg); err != nil {
 			log.Printf("Failed to edit message: %v", err)
 		}
 	}()
@@ -406,6 +481,17 @@ func (h Handler) handleUserAvatar(userID, tgUserID, chatID int64) {
 		}
 
 		log.Printf("Profile photo updated for user %d", chatID)
+	} else {
+		s1 := rand.NewSource(time.Now().UnixNano())
+		r1 := rand.New(s1)
+
+		randNum := r1.Intn(39) + 1
+
+		profilePic := fmt.Sprintf("https://fm-assets.mxksim.dev/avatars/%d.svg", randNum)
+
+		if err := h.st.UpdateUserAvatarURL(userID, profilePic); err != nil {
+			log.Printf("Failed to update user avatar URL: %v", err)
+		}
 	}
 }
 

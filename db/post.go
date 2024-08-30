@@ -253,9 +253,16 @@ func (s Storage) CreatePost(uid int64, post Post) (*Post, error) {
 	return s.GetPostByID(uid, id)
 }
 
-func (s Storage) ListPosts(uid *int64, startDate, endDate time.Time) ([]Post, error) {
-	var posts []Post
-	args := []interface{}{startDate, endDate}
+type ListPostsParams struct {
+	UserID     *int64
+	StartDate  time.Time
+	EndDate    time.Time
+	ShowHidden *bool
+}
+
+func (s Storage) ListPosts(params ListPostsParams) ([]Post, error) {
+	posts := make([]Post, 0)
+	args := []interface{}{params.StartDate, params.EndDate}
 
 	query := `
 		SELECT p.id,
@@ -281,9 +288,13 @@ func (s Storage) ListPosts(uid *int64, startDate, endDate time.Time) ([]Post, er
 		WHERE p.created_at BETWEEN ? AND ? AND p.hidden_at IS NULL
 	`
 
-	if uid != nil {
+	if params.UserID != nil {
 		query += " AND p.user_id = ?"
-		args = append(args, *uid)
+		args = append(args, *params.UserID)
+	}
+
+	if params.ShowHidden != nil && *params.ShowHidden {
+		query = strings.Replace(query, "AND p.hidden_at IS NULL", "", 1)
 	}
 
 	query += `
@@ -416,4 +427,16 @@ func (s Storage) UpdatePost(uid, postID int64, post Post, tags []int) (*Post, er
 	}
 
 	return s.GetPostByID(uid, postID)
+}
+
+func (s Storage) UpdatePostHiddenAt(uid, postID int64, hiddenAt *time.Time) error {
+	query := `
+		UPDATE posts
+		SET hidden_at = ?
+		WHERE id = ? AND user_id = ?
+	`
+
+	_, err := s.db.Exec(query, hiddenAt, postID, uid)
+
+	return err
 }
