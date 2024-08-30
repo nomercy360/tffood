@@ -29,6 +29,7 @@ type storage interface {
 	StoreMessageID(chatID, entityID int64, messageID int) error
 	GetLastMessageID(chatID, entityID int64) (*int64, error)
 	UpdatePostHiddenAt(uid, postID int64, hiddenAt *time.Time) error
+	MarkPostAsSpam(uid, postID int64) error
 }
 
 type Handler struct {

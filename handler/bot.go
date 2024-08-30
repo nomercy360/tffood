@@ -32,6 +32,7 @@ var messages = map[string]map[string]string{
 		"openApp":            "Open",
 		"checkInApp":         "Check the insights in the app",
 		"shareWithCommunity": "Share with community",
+		"spamDetected":       "Cannot process the image. It seems like it contains spam.",
 	},
 	"ru": {
 		"welcome":            "Этот бот поможет вам отслеживать приемы пищи и получать информацию о вашем питании.\nПопробуй отправить фото",
@@ -43,6 +44,7 @@ var messages = map[string]map[string]string{
 		"openApp":            "Открыть",
 		"checkInApp":         "Проверьте результат в приложении",
 		"shareWithCommunity": "Поделиться с сообществом",
+		"spamDetected":       "Не удалось обработать изображение. Похоже, что оно содержит спам.",
 	},
 }
 
@@ -286,6 +288,18 @@ func (h Handler) onImageMessage(lang string, uid int64, update tgModels.Update) 
 			return
 		}
 
+		prevMsgID, err := h.st.GetLastMessageID(update.Message.Chat.ID, res.ID)
+
+		if postWithSuggestions.IsSpam {
+			msg := messages[lang]["spamDetected"]
+			params := &telegram.EditMessageTextParams{ChatID: update.Message.Chat.ID, MessageID: int(*prevMsgID), Text: msg}
+			if _, err := h.tg.EditMessageText(context.Background(), params); err != nil {
+				log.Printf("Failed to edit message: %v", err)
+			}
+
+			return
+		}
+
 		insights := postWithSuggestions.FoodInsights
 		var msgText string
 
@@ -294,8 +308,6 @@ func (h Handler) onImageMessage(lang string, uid int64, update tgModels.Update) 
 		} else {
 			msgText = messages[lang]["insightsNotFound"]
 		}
-
-		prevMsgID, err := h.st.GetLastMessageID(update.Message.Chat.ID, res.ID)
 
 		if err != nil && errors.Is(err, db.ErrNotFound) {
 			log.Printf("Message ID not found for chat %d and post %d", update.Message.Chat.ID, res.ID)

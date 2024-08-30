@@ -211,8 +211,14 @@ func (h Handler) runAISuggestions(lang string, uid, postID int64) (*db.Post, err
 		return nil, err
 	}
 
-	post.IsSpam = info.IsSpam
-	post.DishName = &info.DishName
+	if info.IsSpam {
+		if err := h.st.MarkPostAsSpam(uid, postID); err != nil {
+			return nil, err
+		}
+
+		post.IsSpam = true
+		return post, nil
+	}
 
 	insights, err := getNutritionInfo(lang, formatIngredients(lang, info.Ingredients), h.config.OpenAIKey)
 
@@ -220,6 +226,7 @@ func (h Handler) runAISuggestions(lang string, uid, postID int64) (*db.Post, err
 		return nil, err
 	}
 
+	post.DishName = &info.DishName
 	post.Ingredients = insights.Ingredients
 
 	var protein, fats, carbohydrates, calories int

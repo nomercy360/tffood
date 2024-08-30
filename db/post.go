@@ -285,7 +285,7 @@ func (s Storage) ListPosts(params ListPostsParams) ([]Post, error) {
 				 JOIN users u ON p.user_id = u.id
 				 LEFT JOIN post_tags pt ON p.id = pt.post_id
 				 LEFT JOIN tags t ON pt.tag_id = t.id
-		WHERE p.created_at BETWEEN ? AND ? AND p.hidden_at IS NULL
+		WHERE p.created_at BETWEEN ? AND ? AND p.hidden_at IS NULL AND p.is_spam = false
 	`
 
 	if params.UserID != nil {
@@ -385,7 +385,7 @@ func (s Storage) UpdatePost(uid, postID int64, post Post, tags []int) (*Post, er
 
 	updateQuery := `
         UPDATE posts
-        SET text = ?, photo_url = ?, updated_at = CURRENT_TIMESTAMP, hidden_at = NULL,
+        SET text = ?, photo_url = ?, updated_at = CURRENT_TIMESTAMP,
             dish_name = ?, ingredients = ?, is_spam = ?, food_insights = ?
         WHERE id = ? AND user_id = ?
     `
@@ -437,6 +437,18 @@ func (s Storage) UpdatePostHiddenAt(uid, postID int64, hiddenAt *time.Time) erro
 	`
 
 	_, err := s.db.Exec(query, hiddenAt, postID, uid)
+
+	return err
+}
+
+func (s Storage) MarkPostAsSpam(uid, postID int64) error {
+	query := `
+		UPDATE posts
+		SET is_spam = true
+		WHERE id = ? AND user_id = ?
+	`
+
+	_, err := s.db.Exec(query, postID, uid)
 
 	return err
 }
