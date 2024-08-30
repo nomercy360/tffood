@@ -82,11 +82,19 @@ function Feed() {
 
 function Loader() {
 	return (
-		<div class="grid gap-2">
-			<div class="h-80 animate-pulse rounded-lg border bg-section" />
-			<div class="h-80 animate-pulse rounded-lg border bg-section" />
-			<div class="h-80 animate-pulse rounded-lg border bg-section" />
-			<div class="h-80 animate-pulse rounded-lg border bg-section" />
+		<div class="grid grid-cols-2 gap-1.5">
+			<div class="flex flex-col space-y-1.5">
+				<div class="h-40 animate-pulse rounded-[20px] bg-border" />
+				<div class="h-80 animate-pulse rounded-[20px] bg-border" />
+				<div class="h-96 animate-pulse rounded-[20px] bg-border" />
+				<div class="h-48 animate-pulse rounded-[20px] bg-border" />
+			</div>
+			<div class="flex flex-col space-y-1.5">
+				<div class="h-96 animate-pulse rounded-[20px] bg-border" />
+				<div class="h-72 animate-pulse rounded-[20px] bg-border" />
+				<div class="h-96 animate-pulse rounded-[20px] bg-border" />
+				<div class="h-96 animate-pulse rounded-[20px] bg-border" />
+			</div>
 		</div>
 	)
 }
