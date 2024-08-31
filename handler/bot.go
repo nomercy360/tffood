@@ -269,9 +269,12 @@ func (h Handler) onImageMessage(lang string, uid int64, update tgModels.Update) 
 
 	log.Printf("Photo uploaded to bucket: %s", *key)
 
+	now := time.Now()
+
 	post := db.Post{
 		PhotoURL: fmt.Sprintf("%s/%s", h.config.CdnURL, *key),
 		Text:     caption,
+		HiddenAt: &now,
 	}
 
 	res, err := h.st.CreatePost(uid, post)

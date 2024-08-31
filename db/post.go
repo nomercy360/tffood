@@ -234,10 +234,10 @@ func (s Storage) GetPostByID(uid, id int64) (*Post, error) {
 func (s Storage) CreatePost(uid int64, post Post) (*Post, error) {
 	postQuery := `
         INSERT INTO posts (user_id, photo_url, hidden_at, text)
-        VALUES (?, ?, CURRENT_TIMESTAMP, ?)
+        VALUES (?, ?, ?, ?)
     `
 
-	res, err := s.db.Exec(postQuery, uid, post.PhotoURL, post.Text)
+	res, err := s.db.Exec(postQuery, uid, post.PhotoURL, post.HiddenAt, post.Text)
 	if err != nil {
 		return nil, err
 	}

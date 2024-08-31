@@ -1,16 +1,16 @@
 import { createStore } from 'solid-js/store'
-import { createEffect, createSignal, For, Match, onCleanup, onMount, Show, Switch } from 'solid-js'
+import { createEffect, createSignal,Match, onCleanup, onMount, Show, Switch } from 'solid-js'
 import { useMainButton } from '~/lib/useMainButton'
-import { IconClose, IconMap, IconSparkles } from '~/components/icons'
-import { fetchCreatePost, fetchPostAISuggestions, fetchPresignedUrl, fetchUpdatePost } from '~/lib/api'
+import { IconClose } from '~/components/icons'
+import { fetchCreatePost, fetchPresignedUrl } from '~/lib/api'
 import { useNavigate } from '@solidjs/router'
 import { queryClient } from '~/App'
-import { cn } from '~/lib/utils'
 import { addToast } from '~/components/toast'
 
 type CreatePost = {
 	text: string | null
 	photo: string
+	publish: boolean
 }
 
 async function uploadToS3(url: string, file: File) {
@@ -30,6 +30,7 @@ export default function PostPage() {
 	const [editPost, setEditPost] = createStore<CreatePost>({
 		text: '',
 		photo: '',
+		publish: false,
 	})
 
 	const [step, setStep] = createSignal(0)
@@ -143,6 +144,18 @@ export default function PostPage() {
 										disabled={postLoading()}
 									/>
 								</div>
+							</label>
+							<label class="mt-4 inline-flex w-full cursor-pointer items-center justify-between">
+								<span class="text-sm font-medium text-foreground dark:text-secondary">
+									Publish to Community
+								</span>
+								<input
+									type="checkbox"
+									checked={editPost.publish}
+									onChange={() => setEditPost('publish', !editPost.publish)}
+									class="peer sr-only" />
+								<div
+									class="peer relative h-6 w-11 rounded-full bg-background after:absolute after:start-[2px] after:top-[2px] after:size-5 after:rounded-full after:border after:bg-white after:transition-all after:content-[''] peer-checked:bg-accent-foreground peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none rtl:peer-checked:after:-translate-x-full" />
 							</label>
 						</Show>
 					</Layout>

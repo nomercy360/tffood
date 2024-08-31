@@ -117,8 +117,9 @@ func (h Handler) GetFoodInsightsHandler(c echo.Context) error {
 }
 
 type CreatePostRequest struct {
-	Photo string  `json:"photo" validate:"required"`
-	Text  *string `json:"text"`
+	Photo   string  `json:"photo" validate:"required"`
+	Text    *string `json:"text"`
+	Publish bool    `json:"publish"`
 }
 
 type UpdatePostRequest struct {
@@ -167,9 +168,16 @@ func (h Handler) CreatePost(c echo.Context) error {
 		return err
 	}
 
+	var hiddenAt *time.Time
+	if !req.Publish {
+		now := time.Now()
+		hiddenAt = &now
+	}
+
 	post := db.Post{
 		PhotoURL: fmt.Sprintf("%s/%s", h.config.CdnURL, req.Photo),
 		Text:     req.Text,
+		HiddenAt: hiddenAt,
 	}
 
 	res, err := h.st.CreatePost(uid, post)
