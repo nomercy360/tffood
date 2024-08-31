@@ -1,6 +1,6 @@
 import { createSignal, onCleanup, onMount } from 'solid-js'
 import { useMainButton } from '~/lib/useMainButton'
-import { store } from '~/lib/store'
+import { setUser, store } from '~/lib/store'
 import { fetchUpdateUserSettings } from '~/lib/api'
 import { useTranslations } from '~/lib/locale-context'
 
@@ -11,10 +11,24 @@ export default function SettingsPage() {
 	const { t } = useTranslations()
 
 	const mutate = async () => {
-		await fetchUpdateUserSettings({
-			notifications_enabled: notificationsEnabled(),
-			language: language(),
-		})
+		try {
+			mainButton.showProgress(false)
+			await fetchUpdateUserSettings({
+				notifications_enabled: notificationsEnabled(),
+				language: language(),
+			})
+
+			setUser({
+				...store.user,
+				notifications_enabled: notificationsEnabled(),
+				language: language(),
+			})
+			mainButton.disable('Saved')
+		} catch (error) {
+			console.error(error)
+		} finally {
+			mainButton.hideProgress()
+		}
 	}
 
 	const mainButton = useMainButton()
