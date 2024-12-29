@@ -8,53 +8,21 @@ import (
 	"time"
 )
 
-type UserProfile struct {
-	ID        int64   `db:"id" json:"id"`
-	Username  string  `db:"username" json:"username"`
-	AvatarURL string  `db:"avatar_url" json:"avatar_url"`
-	FirstName *string `db:"first_name" json:"first_name"`
-	LastName  *string `db:"last_name" json:"last_name"`
-	Title     *string `db:"title" json:"title"`
-}
-
-func (up *UserProfile) Scan(src interface{}) error {
-	var source []byte
-	switch src := src.(type) {
-	case []byte:
-		source = src
-	case string:
-		source = []byte(src)
-	case nil:
-		return nil
-	default:
-		return fmt.Errorf("unsupported type: %T", src)
-	}
-
-	if len(source) == 0 {
-		source = []byte("{}")
-	}
-
-	if err := json.Unmarshal(source, up); err != nil {
-		return fmt.Errorf("error unmarshalling UserProfile JSON: %w", err)
-	}
-
-	return nil
-}
-
-type Post struct {
-	ID           int64         `db:"id" json:"id"`
-	UserID       int64         `db:"user_id" json:"user_id"`
-	Text         *string       `db:"text" json:"text"`
-	CreatedAt    time.Time     `db:"created_at" json:"created_at"`
-	UpdatedAt    time.Time     `db:"updated_at" json:"updated_at"`
-	HiddenAt     *time.Time    `db:"hidden_at" json:"hidden_at"`
-	PhotoURL     string        `db:"photo_url" json:"photo_url"`
-	User         UserProfile   `json:"user" db:"user"`
-	DishName     *string       `json:"dish_name" db:"dish_name"`
-	Ingredients  Ingredients   `json:"ingredients" db:"ingredients"`
-	Tags         ArrayString   `json:"tags" db:"tags"`
-	IsSpam       bool          `json:"is_spam" db:"is_spam"`
-	FoodInsights *FoodInsights `json:"food_insights" db:"food_insights"`
+type Meal struct {
+	ID              int64         `db:"id" json:"id"`
+	UserID          int64         `db:"user_id" json:"user_id"`
+	Text            *string       `db:"text" json:"text"`
+	CreatedAt       time.Time     `db:"created_at" json:"created_at"`
+	UpdatedAt       time.Time     `db:"updated_at" json:"updated_at"`
+	HiddenAt        *time.Time    `db:"hidden_at" json:"hidden_at"`
+	PhotoURL        string        `db:"photo_url" json:"photo_url"`
+	DishName        *string       `json:"dish_name" db:"dish_name"`
+	HealthRating    *int          `json:"health_rating" db:"health_rating"`
+	AestheticRating *int          `json:"aesthetic_rating" db:"aesthetic_rating"`
+	Ingredients     Ingredients   `json:"ingredients" db:"ingredients"`
+	Tags            ArrayString   `json:"tags" db:"tags"`
+	IsSpam          bool          `json:"is_spam" db:"is_spam"`
+	FoodInsights    *FoodInsights `json:"food_insights" db:"food_insights"`
 }
 
 type FoodInsights struct {
@@ -183,43 +151,39 @@ func (ts *TagSlice) Scan(src interface{}) error {
 	return nil
 }
 
-func (s Storage) GetPostByID(uid, id int64) (*Post, error) {
-	var post Post
+func (s *storage) GetMealByID(id int64) (*Meal, error) {
+	var meal Meal
 
 	query := `
-		SELECT p.id,
-			   p.user_id,
-			   p.text,
-			   p.created_at,
-			   p.updated_at,
-			   p.hidden_at,
-			   p.photo_url,
-			   p.dish_name,
-			   p.ingredients,
-			   p.tags,
-			   p.is_spam,
-			   p.food_insights,
-			   json_object('id', u.id, 'last_name', u.last_name, 'first_name', u.first_name, 'avatar_url', u.avatar_url, 'title',
-											   u.title, 'username', u.username) AS user
-		FROM posts p
-				 JOIN users u ON p.user_id = u.id
-		WHERE p.id = ?
+		SELECT m.id,
+			   m.user_id,
+			   m.text,
+			   m.created_at,
+			   m.updated_at,
+			   m.hidden_at,
+			   m.photo_url,
+			   m.dish_name,
+			   m.ingredients,
+			   m.tags,
+			   m.is_spam,
+			   m.food_insights
+		FROM meals m
+		WHERE m.id = ?
 	`
 
 	err := s.db.QueryRow(query, id).Scan(
-		&post.ID,
-		&post.UserID,
-		&post.Text,
-		&post.CreatedAt,
-		&post.UpdatedAt,
-		&post.HiddenAt,
-		&post.PhotoURL,
-		&post.DishName,
-		&post.Ingredients,
-		&post.Tags,
-		&post.IsSpam,
-		&post.FoodInsights,
-		&post.User,
+		&meal.ID,
+		&meal.UserID,
+		&meal.Text,
+		&meal.CreatedAt,
+		&meal.UpdatedAt,
+		&meal.HiddenAt,
+		&meal.PhotoURL,
+		&meal.DishName,
+		&meal.Ingredients,
+		&meal.Tags,
+		&meal.IsSpam,
+		&meal.FoodInsights,
 	)
 
 	if IsNoRowsError(err) {
@@ -228,16 +192,16 @@ func (s Storage) GetPostByID(uid, id int64) (*Post, error) {
 		return nil, err
 	}
 
-	return &post, nil
+	return &meal, nil
 }
 
-func (s Storage) CreatePost(uid int64, post Post) (*Post, error) {
-	postQuery := `
-        INSERT INTO posts (user_id, photo_url, hidden_at, text)
+func (s *storage) AddMeal(uid int64, meal Meal) (*Meal, error) {
+	mealQuery := `
+        INSERT INTO meals (user_id, photo_url, hidden_at, text)
         VALUES (?, ?, CURRENT_TIMESTAMP, ?)
     `
 
-	res, err := s.db.Exec(postQuery, uid, post.PhotoURL, post.Text)
+	res, err := s.db.Exec(mealQuery, uid, meal.PhotoURL, meal.Text)
 	if err != nil {
 		return nil, err
 	}
@@ -248,48 +212,38 @@ func (s Storage) CreatePost(uid int64, post Post) (*Post, error) {
 		return nil, err
 	}
 
-	post.ID = id
+	meal.ID = id
 
-	return s.GetPostByID(uid, id)
+	return s.GetMealByID(id)
 }
 
-func (s Storage) ListPosts(uid *int64, startDate, endDate time.Time) ([]Post, error) {
-	var posts []Post
+func (s *storage) ListMeals(startDate, endDate time.Time) ([]Meal, error) {
+	var meals []Meal
 	args := []interface{}{startDate, endDate}
 
 	query := `
-		SELECT p.id,
-			   p.user_id,
-			   p.text,
-			   p.created_at,
-			   p.updated_at,
-			   p.hidden_at,
-			   p.photo_url,
-			   p.dish_name,
-			   p.ingredients,
-			   p.tags,
-			   p.is_spam,
-			   p.food_insights,
-			   json_object('id', u.id, 'last_name', u.last_name, 'first_name', u.first_name, 'avatar_url', u.avatar_url,
-						   'title',
-						   u.title, 'username', u.username)                                                        AS user,
+		SELECT m.id,
+			   m.user_id,
+			   m.text,
+			   m.created_at,
+			   m.updated_at,
+			   m.hidden_at,
+			   m.photo_url,
+			   m.dish_name,
+			   m.ingredients,
+			   m.tags,
+			   m.is_spam,
+			   m.food_insights,
+			   m.aesthetic_rating,
+			   m.health_rating,
 			   json_group_array(distinct json_object('id', t.id, 'name', t.name)) filter ( where t.id is not null) AS tags
-		FROM posts p
-				 JOIN users u ON p.user_id = u.id
-				 LEFT JOIN post_tags pt ON p.id = pt.post_id
+		FROM meals m
+				 JOIN users u ON m.user_id = u.id
+				 LEFT JOIN meal_tags pt ON m.id = pt.meal_id
 				 LEFT JOIN tags t ON pt.tag_id = t.id
-		WHERE p.created_at BETWEEN ? AND ?
-	`
-
-	if uid != nil {
-		query += " AND p.user_id = ?"
-		args = append(args, *uid)
-	}
-
-	query += `
-		GROUP BY p.id
-		ORDER BY p.created_at DESC
-		LIMIT 100
+		WHERE m.created_at >= ? AND m.created_at <= ?
+		GROUP BY m.id
+		ORDER BY m.created_at DESC
 	`
 
 	rows, err := s.db.Query(query, args...)
@@ -300,33 +254,34 @@ func (s Storage) ListPosts(uid *int64, startDate, endDate time.Time) ([]Post, er
 	defer rows.Close()
 
 	for rows.Next() {
-		var p Post
-		if err := rows.Scan(&p.ID,
-			&p.UserID,
-			&p.Text,
-			&p.CreatedAt,
-			&p.UpdatedAt,
-			&p.HiddenAt,
-			&p.PhotoURL,
-			&p.DishName,
-			&p.Ingredients,
-			&p.Tags,
-			&p.IsSpam,
-			&p.FoodInsights,
-			&p.User,
-			&p.Tags,
+		var m Meal
+		if err := rows.Scan(&m.ID,
+			&m.UserID,
+			&m.Text,
+			&m.CreatedAt,
+			&m.UpdatedAt,
+			&m.HiddenAt,
+			&m.PhotoURL,
+			&m.DishName,
+			&m.Ingredients,
+			&m.Tags,
+			&m.IsSpam,
+			&m.FoodInsights,
+			&m.AestheticRating,
+			&m.HealthRating,
+			&m.Tags,
 		); err != nil {
 			return nil, err
 		}
 
-		posts = append(posts, p)
+		meals = append(meals, m)
 	}
 
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return posts, nil
+	return meals, nil
 }
 
 type Tag struct {
@@ -334,7 +289,7 @@ type Tag struct {
 	ID   int64  `db:"id" json:"id"`
 }
 
-func (s Storage) ListTags() ([]Tag, error) {
+func (s *storage) ListTags() ([]Tag, error) {
 	var tags []Tag
 
 	query := `
@@ -366,20 +321,20 @@ func (s Storage) ListTags() ([]Tag, error) {
 	return tags, nil
 }
 
-func (s Storage) UpdatePost(uid, postID int64, post Post, tags []int) (*Post, error) {
+func (s *storage) UpdateMeal(uid, mealID int64, meal Meal, tags []int) (*Meal, error) {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return nil, err
 	}
 
 	updateQuery := `
-        UPDATE posts
+        UPDATE meals
         SET text = ?, photo_url = ?, updated_at = CURRENT_TIMESTAMP, hidden_at = NULL,
-            dish_name = ?, ingredients = ?, is_spam = ?, food_insights = ?
+            dish_name = ?, ingredients = ?, is_spam = ?, food_insights = ?, aesthetic_rating = ?, health_rating = ?
         WHERE id = ? AND user_id = ?
     `
 
-	_, err = tx.Exec(updateQuery, post.Text, post.PhotoURL, post.DishName, post.Ingredients, post.IsSpam, post.FoodInsights, postID, uid)
+	_, err = tx.Exec(updateQuery, meal.Text, meal.PhotoURL, meal.DishName, meal.Ingredients, meal.IsSpam, meal.FoodInsights, meal.AestheticRating, meal.HealthRating, mealID, uid)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
@@ -387,23 +342,23 @@ func (s Storage) UpdatePost(uid, postID int64, post Post, tags []int) (*Post, er
 
 	if len(tags) > 0 {
 		deleteQuery := `
-            DELETE FROM post_tags
-            WHERE post_id = ?
+            DELETE FROM meal_tags
+            WHERE meal_id = ?
         `
 
-		_, err = tx.Exec(deleteQuery, postID)
+		_, err = tx.Exec(deleteQuery, mealID)
 		if err != nil {
 			tx.Rollback()
 			return nil, err
 		}
 
 		tagQuery := `
-            INSERT INTO post_tags (post_id, tag_id)
+            INSERT INTO meal_tags (meal_id, tag_id)
             VALUES (?, ?)
         `
 
 		for _, tag := range tags {
-			_, err = tx.Exec(tagQuery, postID, tag)
+			_, err = tx.Exec(tagQuery, mealID, tag)
 			if err != nil {
 				tx.Rollback()
 				return nil, err
@@ -415,5 +370,5 @@ func (s Storage) UpdatePost(uid, postID int64, post Post, tags []int) (*Post, er
 		return nil, err
 	}
 
-	return s.GetPostByID(uid, postID)
+	return s.GetMealByID(mealID)
 }

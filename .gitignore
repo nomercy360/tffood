@@ -1,5 +1,8 @@
-.idea
-.env
-*.db
-*.db-shm
-*.db-wal
+baloon/.idea
+config.yml
+config.production.yml
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+

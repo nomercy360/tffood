@@ -3,8 +3,6 @@ import type { RouteDefinition } from '@solidjs/router'
 
 import HomePage from '~/pages/index'
 import NavigationTabs from '~/components/tabs'
-import ActivityPage from '~/pages/activity'
-import JoinCommunity from '~/components/join-community'
 
 export const routes: RouteDefinition[] = [
 	{
@@ -15,19 +13,15 @@ export const routes: RouteDefinition[] = [
 				component: HomePage,
 				path: '',
 			},
-			{
-				component: ActivityPage,
-				path: '/activity',
-			},
 		],
 	},
 	{
 		component: lazy(() => import('~/pages/post')),
-		path: '/post',
+		path: '/log',
 	},
 	{
-		component: lazy(() => import('~/pages/posts/id')),
-		path: '/posts/:id',
+		component: lazy(() => import('~/pages/meals/id')),
+		path: '/meals/:id',
 	},
 	{
 		component: lazy(() => import('~/pages/users/handle')),

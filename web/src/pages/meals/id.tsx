@@ -1,7 +1,7 @@
 import { createQuery } from '@tanstack/solid-query'
 import { fetchPost } from '~/lib/api'
 import { For, Show } from 'solid-js'
-import { Post, UserProfileLink } from '~/pages'
+import { Meal, UserProfileLink } from '~/pages'
 import { useTranslations } from '~/lib/locale-context'
 
 export default function UserProfilePage(props: any) {
@@ -35,8 +35,7 @@ export default function UserProfilePage(props: any) {
 					<div class="mt-4 flex flex-row flex-wrap items-center justify-start gap-1.5">
 						<For each={query.data?.tags}>
 							{(tag) => (
-								<span
-									class="flex h-6 items-center justify-center rounded-lg bg-background px-2 py-0.5 text-xs text-hint">
+								<span class="flex h-6 items-center justify-center rounded-lg bg-background px-2 py-0.5 text-xs text-hint">
 									{tag}
 								</span>
 							)}
@@ -57,30 +56,28 @@ function Loading() {
 	return <p>Loading...</p>
 }
 
-function PostInsights(props: { insights: Post['food_insights'] }) {
+function PostInsights(props: { insights: Meal['food_insights'] }) {
 	const { t } = useTranslations()
 	return (
 		<div class="mt-4 flex flex-col items-start justify-start gap-2 rounded-lg bg-background p-2">
 			<div class="text-sm">
-				<strong>
-					{t('common.calories')}:
-				</strong> {props.insights.calories} {t('common.kcal')}
+				<strong>{t('common.calories')}:</strong> {props.insights.calories}{' '}
+				{t('common.kcal')}
 			</div>
 			<div class="text-sm">
-				<strong>{t('common.proteins')}:
-				</strong> {props.insights.proteins} {t('common.g')}
+				<strong>{t('common.proteins')}:</strong> {props.insights.proteins}{' '}
+				{t('common.g')}
 			</div>
 			<div class="text-sm">
-				<strong>{t('common.fats')}:
-				</strong> {props.insights.fats} {t('common.g')}
+				<strong>{t('common.fats')}:</strong> {props.insights.fats}{' '}
+				{t('common.g')}
 			</div>
 			<div class="text-sm">
-				<strong>{t('common.carbohydrates')}:
-				</strong> {props.insights.carbohydrates} {t('common.g')}
+				<strong>{t('common.carbohydrates')}:</strong>{' '}
+				{props.insights.carbohydrates} {t('common.g')}
 			</div>
 			<p class="text-sm">
-				<strong>{t('common.dietary_information')}:
-				</strong>{' '}
+				<strong>{t('common.dietary_information')}:</strong>{' '}
 				{props.insights.dietary_information.join(', ')}
 			</p>
 		</div>

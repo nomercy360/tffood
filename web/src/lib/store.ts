@@ -1,29 +1,27 @@
 import { createStore } from 'solid-js/store'
 
 type User = {
-	id: number;
-	username: string;
-	language: string;
-	notifications_enabled: boolean;
-	community_status: string;
-	request_to_join_at: string;
+	id: number
+	username: string
+	language: string
+	notifications_enabled: boolean
 }
 
 type AuthStore = {
-	user: User;
-	token: string;
-	showSubmitAppPopup: boolean | undefined;
-};
+	user: User
+	token: string
+	showSubmitAppPopup: boolean | undefined
+}
 
 export const [store, setStore] = createStore<{
-	user: User;
-	token: string;
-	showSubmitAppPopup: boolean | undefined;
+	user: User
+	token: string
+	showSubmitAppPopup: boolean | undefined
 }>({} as AuthStore)
 
 export const setUser = (user: User) => setStore('user', user)
 
 export const setToken = (token: string) => setStore('token', token)
 
-export const setShowSubmitAppPopup = (showSubmitAppPopup: boolean) => setStore('showSubmitAppPopup', showSubmitAppPopup)
-
+export const setShowSubmitAppPopup = (showSubmitAppPopup: boolean) =>
+	setStore('showSubmitAppPopup', showSubmitAppPopup)

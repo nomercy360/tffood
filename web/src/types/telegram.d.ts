@@ -40,7 +40,9 @@ interface Utils {}
 
 interface HapticFeedback {
 	notificationOccurred(type: 'error' | 'success' | 'warning'): void
+
 	impactOccurred(style: 'light' | 'medium' | 'heavy' | 'soft' | 'rigid'): void
+
 	selectionOccurred(): void
 }
 
@@ -59,6 +61,7 @@ interface WebApp {
 	backgroundColor: string
 	BackButton: BackButton
 	MainButton: MainButton
+	SecondaryButton: SecondaryButton
 	HapticFeedback: HapticFeedback
 	CloudStorage: CloudStorage
 	SettingsButton: SettingsButton
@@ -189,3 +192,17 @@ interface InitParams {
 	tgWebAppVersion: string
 	tgWebAppThemeParams: string
 }
+
+//{
+//     "type": "secondary",
+//     "text": "Cancel",
+//     "color": "#f4f4f5",
+//     "textColor": "#3390ec",
+//     "isVisible": false,
+//     "isProgressVisible": false,
+//     "isActive": true,
+//     "hasShineEffect": false,
+//     "position": "left"
+// }
+
+type SecondaryButton = MainButton

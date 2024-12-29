@@ -1,4 +1,4 @@
-FROM golang:1.22-alpine3.19 AS build
+FROM golang:1.23-alpine3.19 AS build
 
 ENV CGO_ENABLED=1
 
@@ -10,10 +10,10 @@ RUN apk add --no-cache \
 
 WORKDIR /app
 
-COPY . /app/
+COPY baloon /app/
 
 RUN go mod tidy && \
-    go install -ldflags='-s -w -extldflags "-static"' ./main.go
+    go install -ldflags='-s -w -extldflags "-static"' ./cmd/api/main.go
 
 FROM alpine:3.19
 

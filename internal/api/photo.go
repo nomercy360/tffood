@@ -1,12 +1,12 @@
-package handler
+package api
 
 import (
+	"eatsome/internal/terrors"
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"math/rand"
 	"net/http"
 	"path/filepath"
-	"rednit/terrors"
 	"strings"
 	"time"
 )
@@ -43,7 +43,7 @@ func extFromFileName(fileName string) (string, error) {
 	return ext, nil
 }
 
-func (h Handler) GetPresignedURL(c echo.Context) error {
+func (a *API) GetPresignedURL(c echo.Context) error {
 	var req PresignedURLRequest
 	if err := c.Bind(&req); err != nil {
 		return terrors.BadRequest(err, "failed to bind request")
@@ -67,7 +67,7 @@ func (h Handler) GetPresignedURL(c echo.Context) error {
 
 	fileName := fmt.Sprintf("%d/%s/%s", uid, time.Now().Format("2006-01-02"), randomString(10)+fileExt)
 
-	url, err := h.s3Client.GetPresignedURL(fileName, 15*time.Minute)
+	url, err := a.s3Client.GetPresignedURL(fileName, 15*time.Minute)
 
 	if err != nil {
 		return terrors.InternalServerError(err, "failed to get presigned url")

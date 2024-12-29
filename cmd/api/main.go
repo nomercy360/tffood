@@ -2,26 +2,64 @@ package main
 
 import (
 	"context"
+	"eatsome/internal/api"
+	"eatsome/internal/db"
+	"eatsome/internal/recognition"
+	"eatsome/internal/s3"
+	"eatsome/internal/terrors"
 	"errors"
-	"github.com/caarlos0/env/v11"
+	"fmt"
 	"github.com/go-playground/validator/v10"
-	telegram "github.com/go-telegram/bot"
 	"github.com/golang-jwt/jwt/v5"
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"gopkg.in/yaml.v3"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
-	"rednit/config"
-	"rednit/db"
-	"rednit/handler"
-	storage "rednit/s3"
-	"rednit/terrors"
+	"syscall"
 	"time"
 )
+
+type Config struct {
+	Host             string `yaml:"host"`
+	Port             int    `yaml:"port"`
+	DBPath           string `yaml:"db_path"`
+	TelegramBotToken string `yaml:"telegram_bot_token"`
+	JWTSecret        string `yaml:"jwt_secret"`
+	AWS              struct {
+		AccessKeyID     string `yaml:"access_key_id"`
+		SecretAccessKey string `yaml:"secret_access_key"`
+		Endpoint        string `yaml:"endpoint"`
+		Bucket          string `yaml:"bucket"`
+	} `yaml:"aws"`
+	OpenAIKey string `yaml:"openai_key"`
+	AssetsURL string `yaml:"assets_url"`
+}
+
+func ReadConfig(filePath string) (*Config, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open config file: %w", err)
+	}
+	defer file.Close()
+
+	var cfg Config
+	decoder := yaml.NewDecoder(file)
+	if err := decoder.Decode(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to decode config file: %w", err)
+	}
+
+	return &cfg, nil
+}
+
+func ValidateConfig(cfg *Config) error {
+	validate := validator.New()
+	return validate.Struct(cfg)
+}
 
 func getLoggerMiddleware(logger *slog.Logger) middleware.RequestLoggerConfig {
 	return middleware.RequestLoggerConfig{
@@ -99,7 +137,7 @@ func (cv *customValidator) Validate(i interface{}) error {
 func getAuthConfig(secret string) echojwt.Config {
 	return echojwt.Config{
 		NewClaimsFunc: func(_ echo.Context) jwt.Claims {
-			return new(handler.JWTClaims)
+			return new(api.JWTClaims)
 		},
 		SigningKey:             []byte(secret),
 		ContinueOnIgnoredError: true,
@@ -109,7 +147,7 @@ func getAuthConfig(secret string) echojwt.Config {
 				return echo.NewHTTPError(http.StatusUnauthorized, "auth is invalid")
 			}
 
-			claims := &handler.JWTClaims{
+			claims := &api.JWTClaims{
 				RegisteredClaims: jwt.RegisteredClaims{
 					ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour * 30)),
 				},
@@ -124,44 +162,49 @@ func getAuthConfig(secret string) echojwt.Config {
 	}
 }
 
+func gracefulShutdown(e *echo.Echo, done chan<- bool) {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	<-ctx.Done()
+
+	log.Println("shutting down gracefully, press Ctrl+C again to force")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := e.Shutdown(ctx); err != nil {
+		log.Printf("Server forced to shutdown with error: %v", err)
+	}
+
+	log.Println("Server exiting")
+
+	done <- true
+}
+
 func main() {
+	configFilePath := "config.yml"
+	configFilePathEnv := os.Getenv("CONFIG_FILE_PATH")
+	if configFilePathEnv != "" {
+		configFilePath = configFilePathEnv
+	}
+
+	cfg, err := ReadConfig(configFilePath)
+	if err != nil {
+		log.Fatalf("error reading configuration: %v", err)
+	}
+
+	if err := ValidateConfig(cfg); err != nil {
+		log.Fatalf("invalid configuration: %v", err)
+	}
+
+	storage, err := db.NewStorage(cfg.DBPath)
+
+	if err != nil {
+		log.Fatalf("failed to create storage: %v", err)
+	}
+
 	e := echo.New()
 	e.Use(middleware.Recover())
-
-	cfg := config.Default{}
-	if err := env.Parse(&cfg); err != nil {
-		log.Fatalf("Failed to parse config: %v\n", err)
-	}
-
-	sql, err := db.ConnectDB(cfg.DBPath)
-
-	if err != nil {
-		e.Logger.Fatalf("failed to connect to db: %v", err)
-	}
-
-	if err := sql.Migrate(); err != nil {
-		e.Logger.Fatalf("failed to migrate db: %v", err)
-	}
-
-	s3Client, err := storage.NewS3Client(
-		cfg.AWS.AccessKey, cfg.AWS.SecretKey, cfg.AWS.Endpoint, cfg.AWS.Bucket)
-
-	if err != nil {
-		log.Fatalf("Failed to initialize AWS S3 client: %v\n", err)
-	}
-
-	tg, err := telegram.New(cfg.BotToken)
-	if err != nil {
-		log.Fatalf("Failed to create telegram bot: %v", err)
-	}
-
-	webhook := &telegram.SetWebhookParams{URL: cfg.ExternalURL + "/wh/telegram", MaxConnections: 10}
-
-	if _, err := tg.SetWebhook(context.Background(), webhook); err != nil {
-		log.Fatalf("Failed to set webhook: %v", err)
-	}
-
-	h := handler.New(sql, cfg, s3Client, tg)
 
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{"*"},
@@ -177,8 +220,30 @@ func main() {
 
 	e.Validator = &customValidator{validator: validator.New()}
 
-	e.POST("/auth/telegram", h.TelegramAuth)
-	e.POST("/wh/telegram", h.HandleWebhook)
+	s3Client, err := s3.NewS3Client(
+		cfg.AWS.AccessKeyID, cfg.AWS.SecretAccessKey, cfg.AWS.Endpoint, cfg.AWS.Bucket)
+
+	if err != nil {
+		log.Fatalf("Failed to initialize AWS S3 client: %v\n", err)
+	}
+
+	apiCfg := api.Config{
+		BotToken:  cfg.TelegramBotToken,
+		JWTSecret: cfg.JWTSecret,
+		AssetsURL: cfg.AssetsURL,
+	}
+
+	recognizer := recognition.New(cfg.OpenAIKey)
+
+	a := api.New(storage, apiCfg, s3Client, recognizer)
+
+	tmConfig := middleware.TimeoutConfig{
+		Timeout: 20 * time.Second,
+	}
+
+	e.Use(middleware.TimeoutWithConfig(tmConfig))
+
+	e.POST("/auth/telegram", a.AuthTelegram)
 
 	// Routes
 	g := e.Group("/api")
@@ -187,29 +252,19 @@ func main() {
 
 	g.Use(echojwt.WithConfig(authCfg))
 
-	g.GET("/posts", h.GetPosts)
-	g.POST("/posts", h.CreatePost)
-	g.PUT("/posts/:id", h.UpdatePost)
-	g.GET("/posts/:id", h.GetPost)
-	g.GET("/food-insights", h.GetFoodInsightsHandler)
-	g.GET("/tags", h.GetTags)
-	g.POST("/presigned-url", h.GetPresignedURL)
-	g.PUT("/user/settings", h.UpdateUserSettings)
-	g.POST("/community/join", h.SubmitJoinCommunityRequest)
+	g.GET("/meals", a.GetMeals)
+	g.POST("/meals", a.CreateMeal)
+	g.PUT("/meals/:id", a.UpdateMeal)
+	g.POST("/presigned-url", a.GetPresignedURL)
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
-	// Start server
-	go func() {
-		if err := e.Start(":8080"); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			e.Logger.Fatal("shutting down the server")
-		}
-	}()
+	done := make(chan bool, 1)
 
-	<-ctx.Done()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := e.Shutdown(ctx); err != nil {
-		e.Logger.Fatal(err)
+	go gracefulShutdown(e, done)
+
+	if err := e.Start(fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)); err != nil {
+		log.Fatalf("failed to start server: %v", err)
 	}
+
+	<-done
+	log.Println("Graceful shutdown complete.")
 }

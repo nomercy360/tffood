@@ -27,7 +27,7 @@ function transformStartParam(startParam?: string): string | null {
 	if (startParam.startsWith('p')) {
 		const path = startParam.slice('p'.length)
 
-		return '/posts/' + path
+		return '/meals/' + path
 	} else {
 		return null
 	}
@@ -60,6 +60,7 @@ export default function App(props: any) {
 
 			window.Telegram.WebApp.ready()
 			window.Telegram.WebApp.expand()
+			console.log('WEBAPP:', window.Telegram)
 			window.Telegram.WebApp.SettingsButton.show()
 			window.Telegram.WebApp.SettingsButton.onClick(() => {
 				navigate('/settings')
@@ -98,8 +99,7 @@ export default function App(props: any) {
 							<div class="h-screen w-full flex-col items-start justify-center bg-secondary" />
 						</Match>
 						<Match when={!isAuthenticated() && !isLoading()}>
-							<div
-								class="h-screen min-h-screen w-full flex-col items-start justify-center bg-secondary text-foreground">
+							<div class="h-screen min-h-screen w-full flex-col items-start justify-center bg-secondary text-foreground">
 								Something went wrong. Please try again later.
 							</div>
 						</Match>

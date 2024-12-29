@@ -1,55 +1,51 @@
-import { A, useLocation } from '@solidjs/router'
+import { For } from 'solid-js'
 import { cn } from '~/lib/utils'
-import { useTranslations } from '~/lib/locale-context'
+import { useLocation } from '@solidjs/router'
+import { Link } from '~/components/link'
 
 export default function NavigationTabs(props: any) {
 	const location = useLocation()
 
-	const { t } = useTranslations()
+	const tabs = [
+		{
+			href: '/log',
+			icon: 'dinner_dining',
+			name: '+Meal',
+		},
+		{
+			href: '/',
+			icon: 'home',
+			name: 'Home',
+		},
+		{
+			href: '/friends',
+			icon: 'group',
+			name: 'Friends',
+		},
+	]
 
 	return (
-		<div class="pt-12">
-			<div class="fixed inset-0 flex h-16 w-full items-center bg-background px-4">
-				<div class="flex w-full flex-row items-center justify-start space-x-4">
-					<ul
-						class="grid w-full grid-cols-2 gap-2 rounded-xl bg-secondary p-1 text-center text-sm font-medium text-foreground"
-						id="default-tab"
-						role="tablist"
-					>
-						<li role="presentation">
-							<A
-								href={'/'}
-								class={cn(
-									'flex h-8 items-center justify-center rounded-lg bg-transparent px-4 text-sm font-medium transition-all duration-500 ease-in-out',
-									location.pathname === '/' && 'bg-background',
-								)}
-								id="feed"
-								role="tab"
-								aria-controls="feed"
-								aria-selected="false"
-							>
-								{t('common.feed')}
-							</A>
-						</li>
-						<li role="presentation">
-							<A
-								href={'/activity'}
-								class={cn(
-									'flex h-8 items-center justify-center rounded-lg bg-transparent px-4 text-sm font-medium transition-all duration-500 ease-in-out',
-									location.pathname === '/activity' && 'bg-background',
-								)}
-								id="posts-tab"
-								role="tab"
-								aria-controls="posts"
-								aria-selected="false"
-							>
-								{t('common.activity')}
-							</A>
-						</li>
-					</ul>
-				</div>
+		<>
+			<div class="fixed bottom-0 z-50 grid h-[72px] w-full grid-cols-3 items-center border bg-background pb-2 shadow-sm">
+				<For each={tabs}>
+					{({ href, icon, name }) => (
+						<Link
+							href={href}
+							state={{ from: location.pathname }}
+							class={cn(
+								'flex h-12 flex-col items-center justify-between text-sm text-secondary-foreground',
+								{
+									'text-foreground': location.pathname === href,
+								},
+							)}
+						>
+							<span class="material-symbols-rounded text-[32px]">{icon}</span>
+							<span class="text-xs">{name}</span>
+						</Link>
+					)}
+				</For>
 			</div>
 			{props.children}
-		</div>
+		</>
 	)
 }

@@ -1,10 +1,10 @@
-package storage
+package s3
 
 import (
+	"bytes"
 	"context"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
-	"io"
 	"strings"
 	"time"
 
@@ -12,13 +12,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-type S3Client struct {
+type Client struct {
 	S3Client *s3.Client
 	Bucket   string
 }
 
 // NewS3Client initializes a new AWS S3 client
-func NewS3Client(accessKeyId, accessKeySecret, endpoint, bucket string) (*S3Client, error) {
+func NewS3Client(accessKeyId, accessKeySecret, endpoint, bucket string) (*Client, error) {
 	r2Resolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
 		return aws.Endpoint{
 			URL: endpoint,
@@ -37,13 +37,13 @@ func NewS3Client(accessKeyId, accessKeySecret, endpoint, bucket string) (*S3Clie
 
 	client := s3.NewFromConfig(cfg)
 
-	return &S3Client{
+	return &Client{
 		Bucket:   bucket,
 		S3Client: client,
 	}, nil
 }
 
-func (s *S3Client) GetPresignedURL(objectKey string, duration time.Duration) (string, error) {
+func (s *Client) GetPresignedURL(objectKey string, duration time.Duration) (string, error) {
 	signer := s3.NewPresignClient(s.S3Client)
 
 	request, err := signer.PresignPutObject(context.TODO(), &s3.PutObjectInput{
@@ -60,41 +60,34 @@ func (s *S3Client) GetPresignedURL(objectKey string, duration time.Duration) (st
 	return request.URL, err
 }
 
-func getContentTypeFromFileName(fileName string) string {
-	if strings.HasSuffix(fileName, ".jpg") || strings.HasSuffix(fileName, ".jpeg") {
+func resolveContentType(fileName string) string {
+	switch {
+	case strings.HasSuffix(fileName, ".jpg"):
 		return "image/jpeg"
-	}
-
-	if strings.HasSuffix(fileName, ".png") {
+	case strings.HasSuffix(fileName, ".jpeg"):
+		return "image/jpeg"
+	case strings.HasSuffix(fileName, ".png"):
 		return "image/png"
-	}
-
-	if strings.HasSuffix(fileName, ".gif") {
+	case strings.HasSuffix(fileName, ".gif"):
 		return "image/gif"
-	}
-
-	if strings.HasSuffix(fileName, ".svg") {
-		return "image/svg+xml"
-	}
-
-	if strings.HasSuffix(fileName, ".webp") {
+	case strings.HasSuffix(fileName, ".webp"):
 		return "image/webp"
+	default:
+		return "application/octet-stream"
 	}
-
-	return "application/octet-stream"
 }
 
-func (s *S3Client) UploadFile(key string, file io.Reader) error {
+func (s *Client) UploadFile(file []byte, fileName string) (string, error) {
 	_, err := s.S3Client.PutObject(context.TODO(), &s3.PutObjectInput{
 		Bucket:      aws.String(s.Bucket),
-		Key:         aws.String(key),
-		ContentType: aws.String(getContentTypeFromFileName(key)),
-		Body:        file,
+		Key:         aws.String(fileName),
+		Body:        bytes.NewReader(file),
+		ContentType: aws.String(resolveContentType(fileName)),
 	})
 
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return s.GetPresignedURL(fileName, time.Hour)
 }

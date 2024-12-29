@@ -1,15 +1,11 @@
-import { For, Match, onCleanup, onMount, Show, Switch } from 'solid-js'
+import { createEffect, For, Show } from 'solid-js'
 import { cn, timeSince } from '~/lib/utils'
-import { useMainButton } from '~/lib/useMainButton'
 import { useNavigate } from '@solidjs/router'
-import { fetchPosts } from '~/lib/api'
+import { fetchMeals } from '~/lib/api'
 import { createQuery } from '@tanstack/solid-query'
 import { Link } from '~/components/link'
-import { IconInfo, IconShare } from '~/components/icons'
-import { store } from '~/lib/store'
-import JoinCommunity from '~/components/join-community'
 
-export type Post = {
+export type Meal = {
 	id: number
 	user_id: number
 	text: string
@@ -17,9 +13,16 @@ export type Post = {
 	updated_at: string
 	hidden_at: string | null
 	photo_url: string
-	ingredients: { name: string; amount: number }[]
+	ingredients: {
+		name: string
+		amount: number
+		weight: number
+		calories: number
+	}[]
 	dish_name: string
 	tags: string[]
+	health_rating: number
+	aesthetic_rating: number
 	user: {
 		id: number
 		username: string
@@ -37,46 +40,31 @@ export type Post = {
 }
 
 export default function HomePage() {
-	return (
-		<Switch>
-			<Match when={store.user.community_status == 'member'}>
-				<Feed />
-			</Match>
-			<Match when={store.user.community_status == 'none'}>
-				<JoinCommunity />
-			</Match>
-		</Switch>
-	)
-}
-
-function Feed() {
 	const query = createQuery(() => ({
-		queryKey: ['posts'],
-		queryFn: () => fetchPosts(),
+		queryKey: ['meals'],
+		queryFn: fetchMeals,
 	}))
 
-	const mainButton = useMainButton()
+	createEffect(() => {
+		if (query.data) {
+			console.log(query.data)
+		}
+	})
+
 	const navigate = useNavigate()
 
 	function navigateToPost() {
-		navigate('/post')
+		navigate('/meal')
 	}
-
-	onMount(() => {
-		mainButton.enable('Post Food').onClick(navigateToPost)
-	})
-
-	onCleanup(() => {
-		mainButton.offClick(navigateToPost)
-		mainButton.hide()
-	})
 
 	return (
 		<section class="p-4">
-			<div class="grid gap-2">
+			<div class="grid gap-2 pb-20 text-3xl text-white">
 				<Show when={query.isSuccess} fallback={<Loader />}>
-					<For each={query.data as Post[]}>
-						{(item) => (<PostCard post={item} class="" />)}
+					<For each={query.data}>
+						{(meal: Meal[]) => (
+							<PostCard meal={meal} class="rounded-lg border bg-section" />
+						)}
 					</For>
 				</Show>
 			</div>
@@ -95,7 +83,7 @@ function Loader() {
 	)
 }
 
-export function UserProfileLink(props: { class: any; user: Post['user'] }) {
+export function UserProfileLink(props: { class: any; user: Meal['user'] }) {
 	return (
 		<Link
 			class={cn('flex flex-row items-center justify-start gap-2', props.class)}
@@ -112,49 +100,83 @@ export function UserProfileLink(props: { class: any; user: Post['user'] }) {
 	)
 }
 
-export function PostCard(props: { post: Post, class: any }) {
-	function sharePostURl(postID: string) {
+export function PostCard(props: { meal: Meal; class: any }) {
+	function sharePostURl(mealID: string) {
 		const url =
 			'https://t.me/share/url?' +
 			new URLSearchParams({
-				url: 'https://t.me/eatzfood_bot/app?startapp=p' + postID,
+				url: 'https://t.me/eatzfood_bot/app?startapp=p' + mealID,
 			}).toString() +
-			'&text=Check out this post'
+			'&text=Check out this meal'
 
 		window.Telegram.WebApp.openTelegramLink(url)
 	}
 
+	const meal = props.meal
+
 	return (
-		<div class={cn('rounded-lg border bg-section', props.class)}>
-			<UserProfileLink user={props.post.user} class="p-4" />
+		<div class="w-full overflow-hidden rounded-lg bg-white">
 			<img
-				src={props.post.photo_url}
-				class="aspect-[4/3] w-full object-cover"
-				alt="Thumbnail"
+				src={meal.photo_url}
+				alt={meal.dish_name}
+				class="h-64 w-full object-cover"
 			/>
-			<div class="p-3.5">
-				<p class="text-sm text-hint">
-					{props.post.text || props.post.dish_name}
-				</p>
-				<div class="mt-4 flex w-full flex-row items-center justify-between">
-					<div class="flex flex-row items-center justify-start gap-2">
-						<button
-							class="flex size-8 flex-row items-center justify-center gap-1.5 rounded-lg"
-							onClick={() => sharePostURl(props.post.id.toString())}
-						>
-							<IconShare class="size-5" />
-						</button>
-						<Link
-							class="flex size-8 flex-row items-center justify-center gap-1.5 rounded-lg"
-							href={`/posts/${props.post.id}`}
-						>
-							<IconInfo class="size-5" />
-						</Link>
+			<div class="p-6">
+				{/* Header */}
+				<div class="mb-4 flex items-center space-x-4">
+					<img
+						src={meal.user.avatar_url}
+						alt={meal.user.username}
+						class="size-10 rounded-full"
+					/>
+					<div>
+						<h4 class="text-lg font-semibold text-neutral-800">
+							{meal.dish_name}
+						</h4>
+						<p class="text-sm text-gray-500">@{meal.user.username}</p>
 					</div>
-					<span class="text-xs text-hint">
-						{timeSince(props.post.created_at)}
-					</span>
 				</div>
+				<div class="mb-4 flex space-x-6">
+					<div class="flex items-center space-x-2">
+						<span class="material-symbols-rounded text-yellow-500">star</span>
+						<span class="text-neutral-800">{meal.aesthetic_rating}%</span>
+					</div>
+					<div class="flex items-center space-x-2">
+						<span class="material-symbols-rounded text-green-500">
+							health_and_safety
+						</span>
+						<span class="text-neutral-800">{meal.health_rating}%</span>
+					</div>
+				</div>
+				<div class="mb-4 text-sm text-gray-700">
+					<p>
+						<strong>Calories:</strong> {meal.food_insights?.calories} kcal
+					</p>
+					<p>
+						<strong>Proteins:</strong> {meal.food_insights?.proteins} g
+					</p>
+					<p>
+						<strong>Fats:</strong> {meal.food_insights?.fats} g
+					</p>
+					<p>
+						<strong>Carbs:</strong> {meal.food_insights?.carbohydrates} g
+					</p>
+				</div>
+				{meal.ingredients && (
+					<div>
+						<h5 class="mb-2 font-semibold">Ingredients:</h5>
+						<ul class="list-disc pl-6 text-sm text-gray-700">
+							<For each={meal.ingredients}>
+								{(ingredient) => (
+									<li>
+										{ingredient.name} ({ingredient.calories} kcal,{' '}
+										{ingredient.weight} g)
+									</li>
+								)}
+							</For>
+						</ul>
+					</div>
+				)}
 			</div>
 		</div>
 	)

@@ -13,8 +13,8 @@ import {
 	Tooltip,
 } from 'chart.js'
 import { createQuery } from '@tanstack/solid-query'
-import { fetchFoodInsights, fetchPosts } from '~/lib/api'
-import { Post } from '~/pages'
+import { fetchFoodInsights, fetchMeals } from '~/lib/api'
+import { Meal } from '~/pages'
 import { useTranslations } from '~/lib/locale-context'
 
 Chart.register(
@@ -54,7 +54,6 @@ const CaloricBreakdownChart = () => {
 				},
 			],
 		})
-
 
 		const ctx = canvasRef()?.getContext('2d') as ChartItem
 		const chart = new Chart(ctx, {
@@ -97,4 +96,3 @@ const CaloricBreakdownChart = () => {
 }
 
 export { CaloricBreakdownChart }
-

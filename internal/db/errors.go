@@ -18,7 +18,7 @@ func IsNoRowsError(err error) bool {
 func IsDuplicateError(err error) bool {
 	var sqliteErr sqlite3.Error
 	if errors.As(err, &sqliteErr) {
-		return sqliteErr.ExtendedCode == sqlite3.ErrConstraintUnique
+		return errors.Is(sqliteErr.ExtendedCode, sqlite3.ErrConstraintUnique)
 	}
 
 	return false

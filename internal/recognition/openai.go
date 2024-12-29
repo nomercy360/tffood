@@ -1,12 +1,12 @@
-package handler
+package recognition
 
 import (
+	"eatsome/internal/db"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"rednit/db"
 	"regexp"
 	"strings"
 	"time"
@@ -64,6 +64,14 @@ func getLanguageContent(language string) LanguageContent {
 		NutritionIngredientWeight:   "Weight of the ingredient in grams",
 		Tags:                        "\"vegan\", \"gluten-free\", \"high-protein\", \"low-carb\", \"paleo\", \"dairy-free\", \"vegetarian\", \"sugar-free\", \"low-fat\", \"mediterranean\", \"high-fiber\"",
 	}
+}
+
+type Client struct {
+	Token string
+}
+
+func New(token string) *Client {
+	return &Client{Token: token}
 }
 
 func getRequestBody(lang, imageUrl string, caption *string) string {
@@ -146,6 +154,14 @@ func getRequestBody(lang, imageUrl string, caption *string) string {
                             "required": ["name", "amount"]
                         },
                         "description": "%s"
+                    },
+					"health_rating": {
+                        "type": "integer",
+                        "description": "An integer between 0 and 100 representing how healthy the dish is."
+                    },
+                    "aesthetic_rating": {
+                        "type": "integer",
+                        "description": "An integer between 0 and 100 representing how aesthetically pleasing the dish looks."
                     }
                 },
                  "additionalProperties": false,
@@ -153,7 +169,9 @@ func getRequestBody(lang, imageUrl string, caption *string) string {
                     "ingredients",
                     "dish",
                     "spam",
-                    "tags"
+                    "tags",
+					"health_rating",
+					"aesthetic_rating"
                 ]
             }
         }
@@ -270,7 +288,7 @@ func nutritionRequestBody(lang, foodInfo string) string {
         }
     ,
     "temperature": 0.7,
-    "max_tokens": 300,
+    "max_tokens": 500,
     "top_p": 1,
     "frequency_penalty": 0,
     "presence_penalty": 0
@@ -336,7 +354,7 @@ func formatIngredients(lang string, ingredients []Ingredient) string {
 	return formattedIngredients
 }
 
-func sendOpenAIRequest(reqBody string, token string) (*OpenAIResponse, error) {
+func (c *Client) sendOpenAIRequest(reqBody string) (*OpenAIResponse, error) {
 
 	client := &http.Client{}
 
@@ -347,7 +365,7 @@ func sendOpenAIRequest(reqBody string, token string) (*OpenAIResponse, error) {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.Token))
 
 	resp, err := client.Do(req)
 
@@ -382,22 +400,33 @@ func sendOpenAIRequest(reqBody string, token string) (*OpenAIResponse, error) {
 }
 
 type ImageRecognitionResponse struct {
-	DishName    string       `json:"dish"`
-	Ingredients []Ingredient `json:"ingredients"`
-	IsSpam      bool         `json:"spam"`
-	Tags        []string     `json:"tags"`
+	DishName        string       `json:"dish"`
+	Ingredients     []Ingredient `json:"ingredients"`
+	IsSpam          bool         `json:"spam"`
+	Tags            []string     `json:"tags"`
+	HealthRating    int          `json:"health_rating"`
+	AestheticRating int          `json:"aesthetic_rating"`
+
+	// Calculated
+	Calories      int `json:"calories"`
+	Proteins      int `json:"proteins"`
+	Fats          int `json:"fats"`
+	Carbohydrates int `json:"carbohydrates"`
+
+	// From nutrition info
+	IngredientsInfo []db.Ingredient `json:"ingredients_info"`
 }
 
 type NutritionResponse struct {
 	Ingredients []db.Ingredient `json:"ingredients"`
 }
 
-func getNutritionInfo(lang, foodInfo string, openAIKey string) (*NutritionResponse, error) {
+func (c *Client) getNutritionInfo(lang, foodInfo string) (*NutritionResponse, error) {
 	log.Printf("Getting nutrition info for %s\n", foodInfo)
 
 	reqBody := nutritionRequestBody(lang, foodInfo)
 
-	resp, err := sendOpenAIRequest(reqBody, openAIKey)
+	resp, err := c.sendOpenAIRequest(reqBody)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to send OpenAI request: %w", err)
@@ -458,7 +487,7 @@ func checkImageAvailable(imgUrl string) error {
 	return fmt.Errorf("image not available: %s", imgUrl)
 }
 
-func getFoodPictureInfo(lang, imgUrl string, caption *string, openAIKey string) (*ImageRecognitionResponse, error) {
+func (c *Client) GetFoodPictureInfo(lang, imgUrl string, caption *string) (*ImageRecognitionResponse, error) {
 	log.Printf("Getting food picture info for %s\n", imgUrl)
 
 	reqBody := getRequestBody(lang, imgUrl, caption)
@@ -467,7 +496,7 @@ func getFoodPictureInfo(lang, imgUrl string, caption *string, openAIKey string) 
 		return nil, err
 	}
 
-	resp, err := sendOpenAIRequest(reqBody, openAIKey)
+	resp, err := c.sendOpenAIRequest(reqBody)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to send OpenAI request: %w", err)
@@ -503,6 +532,28 @@ func getFoodPictureInfo(lang, imgUrl string, caption *string, openAIKey string) 
 	log.Printf("Ingredients: %v\n", imageResponse.Ingredients)
 	log.Printf("Is Spam: %v\n", imageResponse.IsSpam)
 	log.Printf("Tags: %v\n", imageResponse.Tags)
+	log.Printf("Health Rating: %d\n", imageResponse.HealthRating)
+	log.Printf("Aesthetic Rating: %d\n", imageResponse.AestheticRating)
+
+	insights, err := c.getNutritionInfo(lang, formatIngredients(lang, imageResponse.Ingredients))
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get nutrition info: %w", err)
+	}
+
+	var protein, fats, carbohydrates, calories int
+	for _, ingredient := range insights.Ingredients {
+		protein += int(ingredient.Macros.Proteins)
+		fats += int(ingredient.Macros.Fats)
+		carbohydrates += int(ingredient.Macros.Carbohydrates)
+		calories += int(ingredient.Calories)
+	}
+
+	imageResponse.Calories = calories
+	imageResponse.Proteins = protein
+	imageResponse.Fats = fats
+	imageResponse.Carbohydrates = carbohydrates
+	imageResponse.IngredientsInfo = insights.Ingredients
 
 	return &imageResponse, nil
 }

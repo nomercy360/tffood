@@ -2,15 +2,15 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   labels:
-    service: tffood-api
-  name: tffood-api
+    service: eatsome-api
+  name: eatsome-api
   namespace: default
 spec:
-  serviceName: "tffood-api"
+  serviceName: "eatsome-api"
   replicas: 1
   selector:
     matchLabels:
-      service: tffood-api
+      service: eatsome-api
   updateStrategy:
     type: RollingUpdate
     rollingUpdate:
@@ -18,11 +18,11 @@ spec:
   template:
     metadata:
       labels:
-        service: tffood-api
+        service: eatsome-api
     spec:
       containers:
-        - image: maksim1111/food-api:latest
-          name: tffood-api
+        - image: maksim1111/eatsome-api:latest
+          name: eatsome-api
           imagePullPolicy: IfNotPresent
           command: [ "/app/main" ]
           ports:
@@ -38,35 +38,40 @@ spec:
           volumeMounts:
             - mountPath: /app/storage
               subPath: storage
-              name: tffood-api-data
+              name: eatsome-api-data
+            - mountPath: /app/config.yml
+              name: eatsome-api-config
+              subPath: config.yml
           env:
-            - name: DB_PATH
-              value: /app/storage/db.sqlite
-          envFrom:
-            - secretRef:
-                name: tffood-api-secrets
+            - name: CONFIG_FILE_PATH
+              value: /app/config.yml
           readinessProbe:
             exec:
-              command: ["sqlite3", "/app/storage/db.sqlite", ".tables"]
+              command: [ "sqlite3", "/app/storage/db.sqlite", ".tables" ]
             initialDelaySeconds: 0
             periodSeconds: 5
             timeoutSeconds: 2
+      volumes:
+        - name: eatsome-api-config
+          secret:
+            secretName: eatsome-api-secrets
   volumeClaimTemplates:
     - metadata:
-        name: tffood-api-data
+        name: eatsome-api-data
       spec:
         accessModes: [ "ReadWriteOnce" ]
         resources:
           requests:
             storage: 1Gi
         storageClassName: "do-block-storage"
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
   labels:
-    service: tffood-api
-  name: tffood-api
+    service: eatsome-api
+  name: eatsome-api
   namespace: default
 spec:
   type: ClusterIP
@@ -74,23 +79,23 @@ spec:
     - port: 8080
       targetPort: 8080
   selector:
-    service: tffood-api
+    service: eatsome-api
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: tffood-api
+  name: eatsome-api
   namespace: default
 spec:
   ingressClassName: nginx
   rules:
-    - host: tffood-api.mxksim.dev
+    - host: eatsome-api.mxksim.dev
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: tffood-api
+                name: eatsome-api
                 port:
                   number: 8080

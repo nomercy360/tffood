@@ -1,8 +1,22 @@
 import { createStore } from 'solid-js/store'
-import { createEffect, createSignal, For, Match, onCleanup, onMount, Show, Switch } from 'solid-js'
+import {
+	createEffect,
+	createSignal,
+	For,
+	Match,
+	onCleanup,
+	onMount,
+	Show,
+	Switch,
+} from 'solid-js'
 import { useMainButton } from '~/lib/useMainButton'
 import { IconClose, IconMap, IconSparkles } from '~/components/icons'
-import { fetchCreatePost, fetchPostAISuggestions, fetchPresignedUrl, fetchUpdatePost } from '~/lib/api'
+import {
+	fetchCreatePost,
+	fetchPostAISuggestions,
+	fetchPresignedUrl,
+	fetchUpdatePost,
+} from '~/lib/api'
 import { useNavigate } from '@solidjs/router'
 import { queryClient } from '~/App'
 import { cn } from '~/lib/utils'
@@ -80,8 +94,7 @@ export default function PostPage() {
 	})
 
 	onCleanup(() => {
-		mainButton.hide()
-			.offClick(createPost)
+		mainButton.hide().offClick(createPost)
 	})
 
 	const handleFileChange = (event: any) => {
@@ -105,10 +118,6 @@ export default function PostPage() {
 		}
 	}
 
-	const resolveImage = () => {
-		return previewUrl() || null
-	}
-
 	return (
 		<>
 			<Switch>
@@ -117,10 +126,16 @@ export default function PostPage() {
 						title="Share your experience"
 						subtitle="What are you eating today?"
 					>
-						<Show when={!imgFile()}
-							fallback={<ImagePreview img={previewUrl()} onRemove={() => setImgFile(null)} />}>
-							<label
-								class="mt-4 flex h-10 items-center justify-start gap-4 rounded-lg border px-2 text-sm font-medium text-foreground">
+						<Show
+							when={!imgFile()}
+							fallback={
+								<ImagePreview
+									img={previewUrl()}
+									onRemove={() => setImgFile(null)}
+								/>
+							}
+						>
+							<label class="mt-4 flex h-10 items-center justify-start gap-4 rounded-lg border px-2 text-sm font-medium text-foreground">
 								<span class="text-nowrap">Choose picture</span>
 								<input
 									type="file"
@@ -152,19 +167,12 @@ export default function PostPage() {
 	)
 }
 
-
-function Layout(props: {
-	children: any, title: string, subtitle: string
-}) {
+function Layout(props: { children: any; title: string; subtitle: string }) {
 	return (
 		<section class="min-h-screen bg-secondary pb-14 pt-5">
 			<div class="px-4">
-				<p class="text-2xl font-bold text-foreground">
-					{props.title}
-				</p>
-				<p class="text-hint">
-					{props.subtitle}
-				</p>
+				<p class="text-2xl font-bold text-foreground">{props.title}</p>
+				<p class="text-hint">{props.subtitle}</p>
 				{props.children}
 			</div>
 		</section>

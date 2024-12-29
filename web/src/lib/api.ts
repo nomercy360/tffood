@@ -1,16 +1,16 @@
 import { store } from '~/lib/store'
-import { Post } from '~/pages'
+import { Meal } from '~/pages'
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string
 
 export const apiFetch = async ({
-																 endpoint,
-																 method = 'GET',
-																 body = null,
-																 showProgress = true,
-																 contentType = 'application/json',
-																 responseContentType = 'json' as 'json' | 'blob',
-															 }: {
+	endpoint,
+	method = 'GET',
+	body = null,
+	showProgress = true,
+	contentType = 'application/json',
+	responseContentType = 'json' as 'json' | 'blob',
+}: {
 	endpoint: string
 	method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
 	body?: unknown
@@ -48,15 +48,15 @@ export const apiFetch = async ({
 	}
 
 	switch (response.status) {
-	case 204:
-		return true
-	default:
-		return response[responseContentType as 'json' | 'blob']()
+		case 204:
+			return true
+		default:
+			return response[responseContentType as 'json' | 'blob']()
 	}
 }
 
-export async function fetchPosts() {
-	const response = await apiFetch({ endpoint: '/posts' })
+export async function fetchMeals() {
+	const response = await apiFetch({ endpoint: '/meals' })
 	return response as any
 }
 
@@ -66,8 +66,8 @@ export async function fetchFoodInsights() {
 }
 
 export async function fetchPost(id: number) {
-	const response = await apiFetch({ endpoint: `/posts/${id}` })
-	return response as Post
+	const response = await apiFetch({ endpoint: `/meals/${id}` })
+	return response as Meal
 }
 
 export async function fetchUpdateUserSettings(settings: any) {
@@ -82,7 +82,7 @@ export async function fetchUpdateUserSettings(settings: any) {
 
 export async function fetchCreatePost(post: any) {
 	const response = await apiFetch({
-		endpoint: '/posts',
+		endpoint: '/meals',
 		method: 'POST',
 		body: post,
 	})
@@ -92,7 +92,7 @@ export async function fetchCreatePost(post: any) {
 
 export async function fetchUpdatePost(id: number, post: any) {
 	const response = await apiFetch({
-		endpoint: `/posts/${id}`,
+		endpoint: `/meals/${id}`,
 		method: 'PUT',
 		body: post,
 	})
@@ -102,7 +102,7 @@ export async function fetchUpdatePost(id: number, post: any) {
 
 export async function fetchPostAISuggestions(id: number) {
 	const response = await apiFetch({
-		endpoint: `/posts/${id}/ai`,
+		endpoint: `/meals/${id}/ai`,
 	})
 
 	return response as any
