@@ -1,4 +1,4 @@
-baloon/.idea
+.idea
 config.yml
 config.production.yml
 *.sqlite
